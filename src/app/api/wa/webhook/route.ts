@@ -29,6 +29,35 @@ function createWhatsAppResponse(to: string, message: string) {
   };
 }
 
+async function markReadWithTyping(messageId: string): Promise<void> {
+  const url = `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`;
+  const payload = {
+    messaging_product: "whatsapp",
+    status: "read",
+    message_id: messageId,
+    typing_indicator: {
+      type: "text",
+    },
+  } as const;
+
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      console.error(`markReadWithTyping failed: ${resp.status} - ${txt}`);
+    }
+  } catch (err) {
+    console.error("markReadWithTyping error:", err);
+  }
+}
+
 async function sendWhatsAppMessage(
   to: string,
   message: string,
@@ -157,6 +186,9 @@ async function processTextMessage(message: WhatsAppMessage): Promise<void> {
   const normalizedTo = normalizePhoneNumber(from);
 
   try {
+    // Mark as read and include typing indicator as per Cloud API
+    await markReadWithTyping(message.id);
+
     const response = await runAgent({
       sessionId: normalizedTo,
       userText: text,

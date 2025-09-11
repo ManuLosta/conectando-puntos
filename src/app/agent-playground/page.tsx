@@ -153,11 +153,6 @@ export default function AgentPlaygroundPage() {
           </Button>
         </CardFooter>
       </Card>
-
-      <p className="mt-2 text-xs text-gray-500">
-        Consejos: respondé &quot;sí&quot; para confirmar el último borrador, o
-        &quot;cancelar&quot; si no querés continuar.
-      </p>
     </div>
   );
 }
