@@ -62,7 +62,7 @@ export const suggestionService = {
             }
           : undefined;
       })
-      .filter((v): v is Suggestion => Boolean(v));
+      .filter((v): v is NonNullable<typeof v> => v !== undefined);
 
     const merged: Suggestion[] = [];
     const seen = new Set<string>();
