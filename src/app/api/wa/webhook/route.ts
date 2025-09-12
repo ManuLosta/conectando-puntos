@@ -11,10 +11,7 @@ const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN!;
 const processedMessages = new Set<string>();
 
 function normalizePhoneNumber(phoneNumber: string): string {
-  if (
-    process.env.NODE_ENV !== "production" &&
-    phoneNumber.startsWith("54911")
-  ) {
+  if (phoneNumber.startsWith("54911")) {
     return "5411" + phoneNumber.slice(5);
   }
   return phoneNumber;
