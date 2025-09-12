@@ -1,0 +1,74 @@
+enum Role {
+  SUPERADMINISTRADOR
+  ADMINISTRADOR_DISTRIBUIDORA
+  VENDEDOR
+  CLIENTE_FINAL
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?  @unique
+  name      String
+  role      Role
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  vendedor      Vendedor?
+  administrador AdministradorDistribuidora?
+  cliente       ClienteFinal?
+  super         Superadministrador?
+
+  @@map("users")
+}
+
+model Superadministrador {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  permissions String[] // JSON array of permissions
+
+  @@map("superadministradores")
+}
+
+model AdministradorDistribuidora {
+  id              String @id @default(cuid())
+  userId          String @unique
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  distribuidoraId String
+
+  // Relationships
+  distribuidora Distribuidora @relation(fields: [distribuidoraId], references: [id])
+
+  @@map("administradores_distribuidora")
+}
+
+model Vendedor {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  territory String?
+  
+  // Relationships
+  orders Order[]
+
+  @@map("vendedores")
+}
+
+model ClienteFinal {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address   String?
+  city      String?
+  postalCode String?
+
+  // Relationships
+  orders               Order[]
+  distribuidoraClients ClienteDistribuidora[]
+
+  @@map("clientes_finales")
+}

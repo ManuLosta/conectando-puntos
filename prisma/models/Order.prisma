@@ -1,0 +1,58 @@
+enum OrderStatus {
+  PENDIENTE
+  CONFIRMADA
+  EN_PREPARACION
+  EN_CAMINO
+  ENTREGADA
+  CANCELADA
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  PAGADO
+  PARCIAL
+  RECHAZADO
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  status        OrderStatus   @default(PENDIENTE)
+  paymentStatus PaymentStatus @default(PENDIENTE)
+  total         Decimal       @db.Decimal(10, 2)
+  
+  // Customer info
+  clienteId     String?
+  vendedorId    String?
+  
+  // Delivery info
+  deliveryAddress String?
+  deliveryDate    DateTime?
+  notes           String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  cliente        ClienteFinal?   @relation(fields: [clienteId], references: [id])
+  vendedor       Vendedor?       @relation(fields: [vendedorId], references: [id])
+  items          OrderItem[]
+  stockMovements StockMovement[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  // Relationships
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
