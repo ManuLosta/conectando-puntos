@@ -87,11 +87,11 @@ export async function runAgent({
     stopWhen: stepCountIs(8),
     onStepFinish: ({ text, toolResults, toolCalls, finishReason, usage }) => {
       console.log("Step finished:", {
-        text,
-        toolResults,
-        toolCalls,
-        finishReason,
-        usage,
+        text: JSON.stringify(text),
+        toolResults: JSON.stringify(toolResults),
+        toolCalls: JSON.stringify(toolCalls),
+        finishReason: JSON.stringify(finishReason),
+        usage: JSON.stringify(usage),
       });
     },
   });

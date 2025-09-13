@@ -1,37 +1,160 @@
-import { StockItem, normalize } from "@/domain/types";
-import { store } from "@/repositories/memory/store";
+import { PrismaClient } from '@prisma/client';
+
+export interface StockItem {
+  id: string;
+  name: string;
+  sku: string;
+  stock: number;
+  price: number;
+  isActive: boolean;
+}
 
 export interface StockRepository {
-  all(): StockItem[];
-  search(query: string): StockItem[];
-  getBySku(sku: string): StockItem | undefined;
-  decrement(sku: string, qty: number): void;
+  getAllForDistributor(distributorId: string): Promise<StockItem[]>;
+  searchForDistributor(distributorId: string, query: string): Promise<StockItem[]>;
+  getBySkuForDistributor(distributorId: string, sku: string): Promise<StockItem | null>;
+  decrementStock(distributorId: string, sku: string, qty: number): Promise<void>;
 }
 
-export class MemoryStockRepository implements StockRepository {
-  all(): StockItem[] {
-    return store.stock;
+export class PrismaStockRepository implements StockRepository {
+  constructor(private prisma: PrismaClient) {}
+
+  async getAllForDistributor(distributorId: string): Promise<StockItem[]> {
+    const inventoryItems = await this.prisma.inventoryItem.findMany({
+      where: {
+        distributorId: distributorId,
+        product: {
+          isActive: true
+        }
+      },
+      include: {
+        product: true
+      }
+    });
+
+    return inventoryItems.map(item => ({
+      id: item.product.id,
+      name: item.product.name,
+      sku: item.product.sku,
+      stock: item.stock,
+      price: Number(item.product.price),
+      isActive: item.product.isActive
+    }));
   }
-  search(query: string): StockItem[] {
+
+  async searchForDistributor(distributorId: string, query: string): Promise<StockItem[]> {
+    if (!query.trim()) return [];
+
     const terms = query
       .split(",")
-      .map((t) => normalize(t.trim()))
+      .map(t => t.trim().toLowerCase())
       .filter(Boolean);
-    if (terms.length === 0) return [];
-    return store.stock.filter((p) =>
-      terms.some(
-        (term) =>
-          normalize(p.sku).includes(term) || normalize(p.name).includes(term),
-      ),
-    );
+
+    const inventoryItems = await this.prisma.inventoryItem.findMany({
+      where: {
+        distributorId: distributorId,
+        product: {
+          isActive: true,
+          OR: terms.flatMap(term => [
+            {
+              name: {
+                contains: term,
+                mode: 'insensitive'
+              }
+            },
+            {
+              sku: {
+                contains: term,
+                mode: 'insensitive'
+              }
+            }
+          ])
+        }
+      },
+      include: {
+        product: true
+      }
+    });
+
+    return inventoryItems.map(item => ({
+      id: item.product.id,
+      name: item.product.name,
+      sku: item.product.sku,
+      stock: item.stock,
+      price: Number(item.product.price),
+      isActive: item.product.isActive
+    }));
   }
-  getBySku(sku: string): StockItem | undefined {
-    return store.stock.find((s) => s.sku === sku);
+
+  async getBySkuForDistributor(distributorId: string, sku: string): Promise<StockItem | null> {
+    const inventoryItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        distributorId: distributorId,
+        product: {
+          sku: sku,
+          isActive: true
+        }
+      },
+      include: {
+        product: true
+      }
+    });
+
+    if (!inventoryItem) return null;
+
+    return {
+      id: inventoryItem.product.id,
+      name: inventoryItem.product.name,
+      sku: inventoryItem.product.sku,
+      stock: inventoryItem.stock,
+      price: Number(inventoryItem.product.price),
+      isActive: inventoryItem.product.isActive
+    };
   }
-  decrement(sku: string, qty: number): void {
-    const s = this.getBySku(sku);
-    if (s) s.qty = Math.max(0, s.qty - qty);
+
+  async decrementStock(distributorId: string, sku: string, qty: number): Promise<void> {
+    const inventoryItem = await this.prisma.inventoryItem.findFirst({
+      where: {
+        distributorId: distributorId,
+        product: {
+          sku: sku
+        }
+      }
+    });
+
+    if (!inventoryItem) {
+      throw new Error(`Product with SKU ${sku} not found in distributor inventory`);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const currentItem = await tx.inventoryItem.findUnique({
+        where: { id: inventoryItem.id }
+      });
+
+      if (!currentItem || currentItem.stock < qty) {
+        throw new Error(`Insufficient stock for SKU ${sku}. Available: ${currentItem?.stock || 0}, requested: ${qty}`);
+      }
+
+      const newStock = Math.max(0, currentItem.stock - qty);
+
+      await tx.inventoryItem.update({
+        where: { id: inventoryItem.id },
+        data: { stock: newStock }
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          inventoryItemId: inventoryItem.id,
+          type: 'OUTBOUND',
+          quantity: qty,
+          previousStock: currentItem.stock,
+          newStock: newStock,
+          reason: 'Order fulfillment'
+        }
+      });
+    });
   }
 }
 
-export const stockRepo = new MemoryStockRepository();
+const prisma = new PrismaClient();
+export const stockRepo = new PrismaStockRepository(prisma);
