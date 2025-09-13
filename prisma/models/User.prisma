@@ -1,8 +1,8 @@
 enum Role {
-  SUPERADMINISTRADOR
-  ADMINISTRADOR_DISTRIBUIDORA
-  VENDEDOR
-  CLIENTE_FINAL
+  SUPER_ADMIN
+  DISTRIBUTOR_ADMIN
+  SALESPERSON
+  FINAL_CLIENT
 }
 
 model User {
@@ -16,59 +16,61 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  vendedor      Vendedor?
-  administrador AdministradorDistribuidora?
-  cliente       ClienteFinal?
-  super         Superadministrador?
+  salesperson       Salesperson?
+  distributorAdmin  DistributorAdmin?
+  finalClient       FinalClient?
+  superAdmin        SuperAdmin?
 
   @@map("users")
 }
 
-model Superadministrador {
+model SuperAdmin {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   permissions String[] // JSON array of permissions
 
-  @@map("superadministradores")
+  @@map("super_admins")
 }
 
-model AdministradorDistribuidora {
-  id              String @id @default(cuid())
-  userId          String @unique
-  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  distribuidoraId String
+model DistributorAdmin {
+  id           String @id @default(cuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  distributorId String
 
   // Relationships
-  distribuidora Distribuidora @relation(fields: [distribuidoraId], references: [id])
+  distributor Distributor @relation(fields: [distributorId], references: [id])
 
-  @@map("administradores_distribuidora")
+  @@map("distributor_admins")
 }
 
-model Vendedor {
-  id        String @id @default(cuid())
-  userId    String @unique
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  territory String?
-  
+model Salesperson {
+  id           String @id @default(cuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  distributorId String
+  territory    String?
+
   // Relationships
-  orders Order[]
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+  orders      Order[]
 
-  @@map("vendedores")
+  @@map("salespeople")
 }
 
-model ClienteFinal {
-  id        String  @id @default(cuid())
-  userId    String  @unique
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  address   String?
-  city      String?
+model FinalClient {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address    String?
+  city       String?
   postalCode String?
 
   // Relationships
-  orders               Order[]
-  distribuidoraClients ClienteDistribuidora[]
+  orders            Order[]
+  distributorClients ClientDistributor[]
 
-  @@map("clientes_finales")
+  @@map("final_clients")
 }

@@ -1,4 +1,4 @@
-model Distribuidora {
+model Distributor {
   id        String   @id @default(cuid())
   name      String
   address   String?
@@ -10,30 +10,31 @@ model Distribuidora {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  administradores AdministradorDistribuidora[]
-  inventoryItems  InventoryItem[]
-  clientes        ClienteDistribuidora[]
+  administrators DistributorAdmin[]
+  salespeople    Salesperson[]
+  inventoryItems InventoryItem[]
+  clients        ClientDistributor[]
 
-  @@map("distribuidoras")
+  @@map("distributors")
 }
 
-model ClienteDistribuidora {
-  id              String @id @default(cuid())
-  distribuidoraId String
-  clienteId       String
-  
+model ClientDistributor {
+  id           String @id @default(cuid())
+  distributorId String
+  clientId     String
+
   // Client-specific pricing or terms
   discount        Decimal? @db.Decimal(5, 2)
   creditLimit     Decimal? @db.Decimal(10, 2)
-  paymentTerms    String?  // "30 días", "contado", etc.
-  
+  paymentTerms    String?  // "30 days", "cash", etc.
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relationships
-  distribuidora Distribuidora @relation(fields: [distribuidoraId], references: [id])
-  cliente       ClienteFinal  @relation(fields: [clienteId], references: [id])
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+  client      FinalClient @relation(fields: [clientId], references: [id])
 
-  @@unique([distribuidoraId, clienteId])
-  @@map("cliente_distribuidora")
+  @@unique([distributorId, clientId])
+  @@map("client_distributors")
 }

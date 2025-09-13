@@ -1,41 +1,41 @@
 enum OrderStatus {
-  PENDIENTE
-  CONFIRMADA
-  EN_PREPARACION
-  EN_CAMINO
-  ENTREGADA
-  CANCELADA
+  PENDING
+  CONFIRMED
+  IN_PREPARATION
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
 }
 
 enum PaymentStatus {
-  PENDIENTE
-  PAGADO
-  PARCIAL
-  RECHAZADO
+  PENDING
+  PAID
+  PARTIAL
+  REJECTED
 }
 
 model Order {
   id            String        @id @default(cuid())
   orderNumber   String        @unique
-  status        OrderStatus   @default(PENDIENTE)
-  paymentStatus PaymentStatus @default(PENDIENTE)
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
   total         Decimal       @db.Decimal(10, 2)
-  
+
   // Customer info
-  clienteId     String?
-  vendedorId    String?
-  
+  clientId      String?
+  salespersonId String?
+
   // Delivery info
   deliveryAddress String?
   deliveryDate    DateTime?
   notes           String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relationships
-  cliente        ClienteFinal?   @relation(fields: [clienteId], references: [id])
-  vendedor       Vendedor?       @relation(fields: [vendedorId], references: [id])
+  client         FinalClient?  @relation(fields: [clientId], references: [id])
+  salesperson    Salesperson?  @relation(fields: [salespersonId], references: [id])
   items          OrderItem[]
   stockMovements StockMovement[]
 

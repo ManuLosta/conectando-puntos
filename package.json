@@ -9,7 +9,9 @@
     "lint": "eslint",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset && npm run db:seed"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.15",
@@ -40,11 +42,13 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "prisma": "^6.16.1",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5"
   },
   "prisma": {
-    "schema": "./prisma"
+    "schema": "./prisma",
+    "seed": "tsx prisma/seed.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
