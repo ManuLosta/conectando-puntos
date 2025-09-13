@@ -26,14 +26,14 @@ export const consultarCatalogo = tool({
 });
 
 export const buscarProductos = tool({
-  description: "Busca productos por prefijo de nombre o SKU en el catálogo de la distribuidora.",
+  description: "Busca productos por palabra clave o SKU en el catálogo de la distribuidora.",
   inputSchema: z.object({
     phone: z.string().describe("Número de teléfono del vendedor que realiza la búsqueda"),
-    prefix: z.string().describe("Prefijo para buscar productos por nombre o SKU")
+    keyword: z.string().describe("Palabra clave para buscar productos por nombre o SKU")
   }),
-  execute: async ({ phone, prefix }) => {
+  execute: async ({ phone, keyword }) => {
     const distributorId = await getDistributorFromContext(phone);
-    return catalogService.searchProductsByPrefix(distributorId, prefix);
+    return catalogService.searchProductsByKeyword(distributorId, keyword);
   },
 });
 

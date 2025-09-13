@@ -12,7 +12,7 @@ export interface CatalogItem {
 
 export interface CatalogRepository {
   getProductsForDistributor(distributorId: string): Promise<CatalogItem[]>;
-  searchProductsByPrefix(distributorId: string, prefix: string): Promise<CatalogItem[]>;
+  searchProductsByKeyword(distributorId: string, keyword: string): Promise<CatalogItem[]>;
   getProductBySku(distributorId: string, sku: string): Promise<CatalogItem | null>;
   getProductsBySkus(distributorId: string, skus: string[]): Promise<CatalogItem[]>;
 }
@@ -44,7 +44,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
     }));
   }
 
-  async searchProductsByPrefix(distributorId: string, prefix: string): Promise<CatalogItem[]> {
+  async searchProductsByKeyword(distributorId: string, keyword: string): Promise<CatalogItem[]> {
     const inventoryItems = await this.prisma.inventoryItem.findMany({
       where: {
         distributorId: distributorId,
@@ -53,13 +53,13 @@ export class PrismaCatalogRepository implements CatalogRepository {
           OR: [
             {
               name: {
-                startsWith: prefix,
+                contains: keyword,
                 mode: 'insensitive'
               }
             },
             {
               sku: {
-                startsWith: prefix,
+                startsWith: keyword,
                 mode: 'insensitive'
               }
             }

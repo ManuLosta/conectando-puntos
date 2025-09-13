@@ -5,7 +5,7 @@ import { stockRepo } from "@/repositories/stock-repo";
 
 export interface CatalogService {
   getCatalogForDistributor(distributorId: string): Promise<CatalogItem[]>;
-  searchProductsByPrefix(distributorId: string, prefix: string): Promise<CatalogItem[]>;
+  searchProductsByKeyword(distributorId: string, keyword: string): Promise<CatalogItem[]>;
   createOrder(orderData: CreateOrderInput): Promise<OrderWithItems>;
   findProductsBySkus(distributorId: string, skus: string[]): Promise<CatalogItem[]>;
 }
@@ -15,11 +15,11 @@ class CatalogServiceImpl implements CatalogService {
     return catalogRepo.getProductsForDistributor(distributorId);
   }
 
-  async searchProductsByPrefix(distributorId: string, prefix: string): Promise<CatalogItem[]> {
-    if (!prefix.trim()) {
+  async searchProductsByKeyword(distributorId: string, keyword: string): Promise<CatalogItem[]> {
+    if (!keyword.trim()) {
       return [];
     }
-    return catalogRepo.searchProductsByPrefix(distributorId, prefix.trim());
+    return catalogRepo.searchProductsByKeyword(distributorId, keyword.trim());
   }
 
   async findProductsBySkus(distributorId: string, skus: string[]): Promise<CatalogItem[]> {
