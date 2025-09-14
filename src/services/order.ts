@@ -1,8 +1,8 @@
-import { catalogService } from "@/services/catalog";
 import { orderRepo } from "@/repositories/order-repo";
 import { customerService } from "@/services/customer";
 import { stockRepo } from "@/repositories/stock-repo";
 import { userRepo } from "@/repositories/user-repo";
+import { OrderWithItems } from "@/repositories/prisma-order-repo";
 
 export interface OrderService {
   createOrderForSalesperson(
@@ -10,11 +10,11 @@ export interface OrderService {
     clientId: string,
     items: { sku: string; quantity: number }[],
     deliveryAddress?: string,
-    notes?: string
-  ): Promise<any>;
-  confirmOrder(orderId: string): Promise<any | null>;
-  getOrderById(orderId: string): Promise<any | null>;
-  getOrderByNumber(orderNumber: string): Promise<any | null>;
+    notes?: string,
+  ): Promise<OrderWithItems>;
+  confirmOrder(orderId: string): Promise<OrderWithItems | null>;
+  getOrderById(orderId: string): Promise<OrderWithItems | null>;
+  getOrderByNumber(orderNumber: string): Promise<OrderWithItems | null>;
 }
 
 class OrderServiceImpl implements OrderService {
@@ -23,35 +23,46 @@ class OrderServiceImpl implements OrderService {
     clientId: string,
     items: { sku: string; quantity: number }[],
     deliveryAddress?: string,
-    notes?: string
+    notes?: string,
   ) {
-    const distributorId = await userRepo.getSalespersonDistributor(salespersonId);
+    const distributorId =
+      await userRepo.getSalespersonDistributor(salespersonId);
     if (!distributorId) {
-      throw new Error(`No se encontró distribuidora para el vendedor ${salespersonId}`);
+      throw new Error(
+        `No se encontró distribuidora para el vendedor ${salespersonId}`,
+      );
     }
 
-    const customer = await customerService.findByIdForDistributor(distributorId, clientId);
+    const customer = await customerService.findByIdForDistributor(
+      distributorId,
+      clientId,
+    );
     if (!customer) {
       throw new Error(`Cliente no encontrado: ${clientId}`);
     }
 
     const orderItems = await Promise.all(
       items.map(async (item) => {
-        const product = await stockRepo.getBySkuForDistributor(distributorId, item.sku);
+        const product = await stockRepo.getBySkuForDistributor(
+          distributorId,
+          item.sku,
+        );
         if (!product) {
           throw new Error(`Producto no encontrado: ${item.sku}`);
         }
         if (product.stock < item.quantity) {
-          throw new Error(`Stock insuficiente para ${item.sku}. Disponible: ${product.stock}, solicitado: ${item.quantity}`);
+          throw new Error(
+            `Stock insuficiente para ${item.sku}. Disponible: ${product.stock}, solicitado: ${item.quantity}`,
+          );
         }
 
         return {
           productId: product.id,
           sku: product.sku,
           quantity: item.quantity,
-          price: product.price
+          price: product.price,
         };
-      })
+      }),
     );
 
     const orderData = {
@@ -59,7 +70,7 @@ class OrderServiceImpl implements OrderService {
       salespersonId,
       items: orderItems,
       deliveryAddress,
-      notes
+      notes,
     };
 
     return orderRepo.createOrder(orderData);
@@ -69,13 +80,21 @@ class OrderServiceImpl implements OrderService {
     const order = await orderRepo.findById(orderId);
     if (!order) return null;
 
-    const distributorId = await userRepo.getSalespersonDistributor(order.salespersonId!);
+    const distributorId = await userRepo.getSalespersonDistributor(
+      order.salespersonId!,
+    );
     if (!distributorId) {
-      throw new Error(`No se encontró distribuidora para el vendedor ${order.salespersonId}`);
+      throw new Error(
+        `No se encontró distribuidora para el vendedor ${order.salespersonId}`,
+      );
     }
 
     for (const item of order.items) {
-      await stockRepo.decrementStock(distributorId, item.product.sku, item.quantity);
+      await stockRepo.decrementStock(
+        distributorId,
+        item.product.sku,
+        item.quantity,
+      );
     }
 
     return order;

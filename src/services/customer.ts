@@ -1,11 +1,21 @@
 import { customerRepo } from "@/repositories/customer-repo";
+import { Customer } from "@/domain/types";
 
 export interface CustomerService {
-  listForDistributor(distributorId: string): Promise<any[]>;
-  findByNameForDistributor(distributorId: string, name: string): Promise<any | null>;
-  findByIdForDistributor(distributorId: string, clientId: string): Promise<any | null>;
+  listForDistributor(distributorId: string): Promise<Customer[]>;
+  findByNameForDistributor(
+    distributorId: string,
+    name: string,
+  ): Promise<Customer | null>;
+  findByIdForDistributor(
+    distributorId: string,
+    clientId: string,
+  ): Promise<Customer | null>;
   existsForDistributor(distributorId: string, name: string): Promise<boolean>;
-  searchForDistributor(distributorId: string, query: string): Promise<any[]>;
+  searchForDistributor(
+    distributorId: string,
+    query: string,
+  ): Promise<Customer[]>;
 }
 
 class CustomerServiceImpl implements CustomerService {
