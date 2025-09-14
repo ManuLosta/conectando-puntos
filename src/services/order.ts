@@ -1,36 +1,93 @@
 import { catalogService } from "@/services/catalog";
 import { orderRepo } from "@/repositories/order-repo";
 import { customerService } from "@/services/customer";
-import { Order } from "@/domain/types";
 import { stockRepo } from "@/repositories/stock-repo";
+import { userRepo } from "@/repositories/user-repo";
 
-export const orderService = {
-  createDraftOrder(
-    customer: string,
-    items: { sku: string; qty: number }[],
-  ): Order {
-    if (!customerService.exists(customer)) {
-      throw new Error(`Cliente no encontrado: ${customer}`);
+export interface OrderService {
+  createOrderForSalesperson(
+    salespersonId: string,
+    clientId: string,
+    items: { sku: string; quantity: number }[],
+    deliveryAddress?: string,
+    notes?: string
+  ): Promise<any>;
+  confirmOrder(orderId: string): Promise<any | null>;
+  getOrderById(orderId: string): Promise<any | null>;
+  getOrderByNumber(orderNumber: string): Promise<any | null>;
+}
+
+class OrderServiceImpl implements OrderService {
+  async createOrderForSalesperson(
+    salespersonId: string,
+    clientId: string,
+    items: { sku: string; quantity: number }[],
+    deliveryAddress?: string,
+    notes?: string
+  ) {
+    const distributorId = await userRepo.getSalespersonDistributor(salespersonId);
+    if (!distributorId) {
+      throw new Error(`No se encontró distribuidora para el vendedor ${salespersonId}`);
     }
-    const orderItems = items.map((it) => {
-      const prod = catalogService.getBySku(it.sku);
-      const price = prod?.price ?? 0;
-      const name = prod?.name ?? it.sku;
-      const lineTotal = price * it.qty;
-      return { sku: it.sku, name, qty: it.qty, price, lineTotal };
-    });
-    return orderRepo.createDraft(customer, orderItems);
-  },
-  confirmOrder(orderId: string): Order | undefined {
-    const order = orderRepo.confirm(orderId);
-    if (!order) return undefined;
-    // decrement stock on confirm
-    order.items.forEach((it) => {
-      const s = catalogService.getBySku(it.sku);
-      if (s) {
-        stockRepo.decrement(it.sku, it.qty);
-      }
-    });
+
+    const customer = await customerService.findByIdForDistributor(distributorId, clientId);
+    if (!customer) {
+      throw new Error(`Cliente no encontrado: ${clientId}`);
+    }
+
+    const orderItems = await Promise.all(
+      items.map(async (item) => {
+        const product = await stockRepo.getBySkuForDistributor(distributorId, item.sku);
+        if (!product) {
+          throw new Error(`Producto no encontrado: ${item.sku}`);
+        }
+        if (product.stock < item.quantity) {
+          throw new Error(`Stock insuficiente para ${item.sku}. Disponible: ${product.stock}, solicitado: ${item.quantity}`);
+        }
+
+        return {
+          productId: product.id,
+          sku: product.sku,
+          quantity: item.quantity,
+          price: product.price
+        };
+      })
+    );
+
+    const orderData = {
+      clientId,
+      salespersonId,
+      items: orderItems,
+      deliveryAddress,
+      notes
+    };
+
+    return orderRepo.createOrder(orderData);
+  }
+
+  async confirmOrder(orderId: string) {
+    const order = await orderRepo.findById(orderId);
+    if (!order) return null;
+
+    const distributorId = await userRepo.getSalespersonDistributor(order.salespersonId!);
+    if (!distributorId) {
+      throw new Error(`No se encontró distribuidora para el vendedor ${order.salespersonId}`);
+    }
+
+    for (const item of order.items) {
+      await stockRepo.decrementStock(distributorId, item.product.sku, item.quantity);
+    }
+
     return order;
-  },
-};
+  }
+
+  async getOrderById(orderId: string) {
+    return orderRepo.findById(orderId);
+  }
+
+  async getOrderByNumber(orderNumber: string) {
+    return orderRepo.findByOrderNumber(orderNumber);
+  }
+}
+
+export const orderService = new OrderServiceImpl();

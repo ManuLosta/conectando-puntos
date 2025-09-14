@@ -1,0 +1,40 @@
+model Distributor {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  city      String?
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  administrators DistributorAdmin[]
+  salespeople    Salesperson[]
+  inventoryItems InventoryItem[]
+  clients        ClientDistributor[]
+
+  @@map("distributors")
+}
+
+model ClientDistributor {
+  id           String @id @default(cuid())
+  distributorId String
+  clientId     String
+
+  // Client-specific pricing or terms
+  discount        Decimal? @db.Decimal(5, 2)
+  creditLimit     Decimal? @db.Decimal(10, 2)
+  paymentTerms    String?  // "30 days", "cash", etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+  client      FinalClient @relation(fields: [clientId], references: [id])
+
+  @@unique([distributorId, clientId])
+  @@map("client_distributors")
+}
