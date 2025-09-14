@@ -1,6 +1,5 @@
 import { MetricsCard } from "./metrics/metrics-card";
 import { DollarSign, Clock, Package, CreditCard } from "lucide-react";
-import { RecentActivitySection } from "./recent-activity-section";
 
 export function DashboardLoading() {
   return (
