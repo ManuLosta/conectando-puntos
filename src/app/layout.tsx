@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Poppins, Roboto } from "next/font/google";
+import { Poppins, Roboto } from "next/font/google";
 import "./globals.css";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -15,11 +15,6 @@ const roboto = Roboto({
   weight: ["400"],
   variable: "--text-family",
 });
-
-export const metadata: Metadata = {
-  title: "Conectando Puntos",
-  description: "Conectando Puntos",
-};
 
 export default function RootLayout({
   children,
