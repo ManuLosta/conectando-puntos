@@ -56,7 +56,6 @@ export const suggestionService = {
         qtyAvailable: s.stock,
       }));
 
-
     const merged: Suggestion[] = [];
     const seen = new Set<string>();
     [...expiring, ...topRepeat].forEach((s: Suggestion) => {

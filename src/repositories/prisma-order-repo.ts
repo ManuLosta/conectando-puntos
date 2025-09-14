@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 export interface OrderItemInput {
   productId: string;
@@ -49,13 +49,18 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
 
   private generateOrderNumber(): string {
     const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, "0");
     return `ORD-${timestamp}-${random}`;
   }
 
   async createOrder(orderData: CreateOrderInput): Promise<OrderWithItems> {
     const orderNumber = this.generateOrderNumber();
-    const total = orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = orderData.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
 
     const order = await this.prisma.order.create({
       data: {
@@ -66,13 +71,13 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
         deliveryAddress: orderData.deliveryAddress,
         notes: orderData.notes,
         items: {
-          create: orderData.items.map(item => ({
+          create: orderData.items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
-            subtotal: item.price * item.quantity
-          }))
-        }
+            subtotal: item.price * item.quantity,
+          })),
+        },
       },
       include: {
         items: {
@@ -80,12 +85,12 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
             product: {
               select: {
                 name: true,
-                sku: true
-              }
-            }
-          }
-        }
-      }
+                sku: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     return {
@@ -98,7 +103,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
       deliveryAddress: order.deliveryAddress,
       notes: order.notes,
       createdAt: order.createdAt,
-      items: order.items.map(item => ({
+      items: order.items.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
@@ -106,9 +111,9 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
         subtotal: Number(item.subtotal),
         product: {
           name: item.product.name,
-          sku: item.product.sku
-        }
-      }))
+          sku: item.product.sku,
+        },
+      })),
     };
   }
 
@@ -121,12 +126,12 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
             product: {
               select: {
                 name: true,
-                sku: true
-              }
-            }
-          }
-        }
-      }
+                sku: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!order) return null;
@@ -141,7 +146,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
       deliveryAddress: order.deliveryAddress,
       notes: order.notes,
       createdAt: order.createdAt,
-      items: order.items.map(item => ({
+      items: order.items.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
@@ -149,9 +154,9 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
         subtotal: Number(item.subtotal),
         product: {
           name: item.product.name,
-          sku: item.product.sku
-        }
-      }))
+          sku: item.product.sku,
+        },
+      })),
     };
   }
 
@@ -164,12 +169,12 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
             product: {
               select: {
                 name: true,
-                sku: true
-              }
-            }
-          }
-        }
-      }
+                sku: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!order) return null;
@@ -184,7 +189,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
       deliveryAddress: order.deliveryAddress,
       notes: order.notes,
       createdAt: order.createdAt,
-      items: order.items.map(item => ({
+      items: order.items.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
@@ -192,9 +197,9 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
         subtotal: Number(item.subtotal),
         product: {
           name: item.product.name,
-          sku: item.product.sku
-        }
-      }))
+          sku: item.product.sku,
+        },
+      })),
     };
   }
 }

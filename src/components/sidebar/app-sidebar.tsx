@@ -9,9 +9,9 @@ import {
   PackageIcon,
 } from "lucide-react";
 
-import { NavMain } from "@/components/nav-main";
-import { NavHeader } from "@/components/nav-header";
-import { NavUser } from "@/components/nav-user";
+import { NavMain } from "@/components/sidebar/nav-main";
+import { NavHeader } from "@/components/sidebar/nav-header";
+import { NavUser } from "@/components/sidebar/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -34,13 +34,13 @@ const data = {
   },
   navMain: [
     {
-      title: "Torre de Control",
+      title: "Dashboard",
       url: "#",
       icon: HomeIcon,
       isActive: true,
     },
     {
-      title: "Pedidos y Facturación",
+      title: "Pedidos",
       url: "#",
       icon: ShoppingCartIcon,
     },

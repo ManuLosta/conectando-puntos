@@ -9,15 +9,20 @@ import { userRepo } from "@/repositories/user-repo";
 async function getDistributorFromContext(phone: string): Promise<string> {
   const distributorId = await userRepo.getSalespersonDistributorByPhone(phone);
   if (!distributorId) {
-    throw new Error(`No se encontró distribuidora para el vendedor con teléfono ${phone}`);
+    throw new Error(
+      `No se encontró distribuidora para el vendedor con teléfono ${phone}`,
+    );
   }
   return distributorId;
 }
 
 export const consultarCatalogo = tool({
-  description: "Consulta el catálogo completo de productos disponibles para la distribuidora del vendedor.",
+  description:
+    "Consulta el catálogo completo de productos disponibles para la distribuidora del vendedor.",
   inputSchema: z.object({
-    phone: z.string().describe("Número de teléfono del vendedor que realiza la consulta")
+    phone: z
+      .string()
+      .describe("Número de teléfono del vendedor que realiza la consulta"),
   }),
   execute: async ({ phone }) => {
     const distributorId = await getDistributorFromContext(phone);
@@ -26,10 +31,15 @@ export const consultarCatalogo = tool({
 });
 
 export const buscarProductos = tool({
-  description: "Busca productos por palabra clave o SKU en el catálogo de la distribuidora.",
+  description:
+    "Busca productos por palabra clave o SKU en el catálogo de la distribuidora.",
   inputSchema: z.object({
-    phone: z.string().describe("Número de teléfono del vendedor que realiza la búsqueda"),
-    keyword: z.string().describe("Palabra clave para buscar productos por nombre o SKU")
+    phone: z
+      .string()
+      .describe("Número de teléfono del vendedor que realiza la búsqueda"),
+    keyword: z
+      .string()
+      .describe("Palabra clave para buscar productos por nombre o SKU"),
   }),
   execute: async ({ phone, keyword }) => {
     const distributorId = await getDistributorFromContext(phone);
@@ -38,10 +48,13 @@ export const buscarProductos = tool({
 });
 
 export const consultarStock = tool({
-  description: "Consulta stock de productos por búsqueda de texto o SKU. Puede buscar múltiples productos separados por comas.",
+  description:
+    "Consulta stock de productos por búsqueda de texto o SKU. Puede buscar múltiples productos separados por comas.",
   inputSchema: z.object({
-    phone: z.string().describe("Número de teléfono del vendedor que realiza la consulta"),
-    query: z.string().describe("Texto de búsqueda para productos")
+    phone: z
+      .string()
+      .describe("Número de teléfono del vendedor que realiza la consulta"),
+    query: z.string().describe("Texto de búsqueda para productos"),
   }),
   execute: async ({ phone, query }) => {
     const distributorId = await getDistributorFromContext(phone);
@@ -50,30 +63,52 @@ export const consultarStock = tool({
 });
 
 export const crearOrden = tool({
-  description: "Crea una orden completa para un cliente específico con validación de stock.",
+  description:
+    "Crea una orden completa para un cliente específico con validación de stock.",
   inputSchema: z.object({
-    phone: z.string().describe("Número de teléfono del vendedor que crea la orden"),
+    phone: z
+      .string()
+      .describe("Número de teléfono del vendedor que crea la orden"),
     clientId: z.string().describe("ID del cliente para quien se crea la orden"),
-    items: z.array(z.object({
-      sku: z.string().describe("SKU del producto"),
-      quantity: z.number().int().positive().describe("Cantidad del producto")
-    })).min(1).describe("Lista de productos y cantidades"),
-    deliveryAddress: z.string().optional().describe("Dirección de entrega (opcional)"),
-    notes: z.string().optional().describe("Notas adicionales (opcional)")
+    items: z
+      .array(
+        z.object({
+          sku: z.string().describe("SKU del producto"),
+          quantity: z
+            .number()
+            .int()
+            .positive()
+            .describe("Cantidad del producto"),
+        }),
+      )
+      .min(1)
+      .describe("Lista de productos y cantidades"),
+    deliveryAddress: z
+      .string()
+      .optional()
+      .describe("Dirección de entrega (opcional)"),
+    notes: z.string().optional().describe("Notas adicionales (opcional)"),
   }),
   execute: async ({ phone, clientId, items, deliveryAddress, notes }) => {
     const salespersonId = await userRepo.getSalespersonIdByPhone(phone);
     if (!salespersonId) {
       throw new Error(`No se encontró vendedor con teléfono ${phone}`);
     }
-    return orderService.createOrderForSalesperson(salespersonId, clientId, items, deliveryAddress, notes);
+    return orderService.createOrderForSalesperson(
+      salespersonId,
+      clientId,
+      items,
+      deliveryAddress,
+      notes,
+    );
   },
 });
 
 export const confirmarOrden = tool({
-  description: "Confirma una orden existente por ID y descuenta el stock correspondiente.",
+  description:
+    "Confirma una orden existente por ID y descuenta el stock correspondiente.",
   inputSchema: z.object({
-    orderId: z.string().describe("ID de la orden a confirmar")
+    orderId: z.string().describe("ID de la orden a confirmar"),
   }),
   execute: async ({ orderId }) => {
     const order = await orderService.confirmOrder(orderId);
@@ -88,7 +123,10 @@ export const listarClientes = tool({
   description: "Lista todos los clientes de la distribuidora del vendedor.",
   inputSchema: z.object({
     phone: z.string().describe("Número de teléfono del vendedor"),
-    query: z.string().optional().describe("Filtro opcional de búsqueda por nombre")
+    query: z
+      .string()
+      .optional()
+      .describe("Filtro opcional de búsqueda por nombre"),
   }),
   execute: async ({ phone, query }) => {
     const distributorId = await getDistributorFromContext(phone);
@@ -102,10 +140,11 @@ export const listarClientes = tool({
 });
 
 export const buscarClientes = tool({
-  description: "Busca clientes por nombre o email en la distribuidora del vendedor.",
+  description:
+    "Busca clientes por nombre o email en la distribuidora del vendedor.",
   inputSchema: z.object({
     phone: z.string().describe("Número de teléfono del vendedor"),
-    query: z.string().describe("Texto de búsqueda para clientes")
+    query: z.string().describe("Texto de búsqueda para clientes"),
   }),
   execute: async ({ phone, query }) => {
     const distributorId = await getDistributorFromContext(phone);
@@ -116,7 +155,7 @@ export const buscarClientes = tool({
 export const obtenerOrden = tool({
   description: "Obtiene una orden por su ID.",
   inputSchema: z.object({
-    orderId: z.string().describe("ID de la orden")
+    orderId: z.string().describe("ID de la orden"),
   }),
   execute: async ({ orderId }) => {
     return orderService.getOrderById(orderId);

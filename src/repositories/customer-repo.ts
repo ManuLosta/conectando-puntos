@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 export interface Customer {
   id: string;
@@ -12,10 +12,19 @@ export interface Customer {
 
 export interface CustomerRepository {
   listForDistributor(distributorId: string): Promise<Customer[]>;
-  findByNameForDistributor(distributorId: string, name: string): Promise<Customer | null>;
-  findByIdForDistributor(distributorId: string, clientId: string): Promise<Customer | null>;
+  findByNameForDistributor(
+    distributorId: string,
+    name: string,
+  ): Promise<Customer | null>;
+  findByIdForDistributor(
+    distributorId: string,
+    clientId: string,
+  ): Promise<Customer | null>;
   existsForDistributor(distributorId: string, name: string): Promise<boolean>;
-  searchForDistributor(distributorId: string, query: string): Promise<Customer[]>;
+  searchForDistributor(
+    distributorId: string,
+    query: string,
+  ): Promise<Customer[]>;
 }
 
 export class PrismaCustomerRepository implements CustomerRepository {
@@ -24,29 +33,32 @@ export class PrismaCustomerRepository implements CustomerRepository {
   async listForDistributor(distributorId: string): Promise<Customer[]> {
     const clientDistributors = await this.prisma.clientDistributor.findMany({
       where: {
-        distributorId: distributorId
+        distributorId: distributorId,
       },
       include: {
         client: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
-    return clientDistributors.map(cd => ({
+    return clientDistributors.map((cd) => ({
       id: cd.client.id,
       name: cd.client.user.name,
       email: cd.client.user.email,
       phone: cd.client.user.phone || undefined,
       address: cd.client.address || undefined,
       city: cd.client.city || undefined,
-      isActive: cd.client.user.isActive
+      isActive: cd.client.user.isActive,
     }));
   }
 
-  async findByNameForDistributor(distributorId: string, name: string): Promise<Customer | null> {
+  async findByNameForDistributor(
+    distributorId: string,
+    name: string,
+  ): Promise<Customer | null> {
     const normalizedName = name.trim().toLowerCase();
 
     const clientDistributor = await this.prisma.clientDistributor.findFirst({
@@ -56,19 +68,19 @@ export class PrismaCustomerRepository implements CustomerRepository {
           user: {
             name: {
               contains: normalizedName,
-              mode: 'insensitive'
+              mode: "insensitive",
             },
-            isActive: true
-          }
-        }
+            isActive: true,
+          },
+        },
       },
       include: {
         client: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
     if (!clientDistributor) return null;
@@ -80,23 +92,26 @@ export class PrismaCustomerRepository implements CustomerRepository {
       phone: clientDistributor.client.user.phone || undefined,
       address: clientDistributor.client.address || undefined,
       city: clientDistributor.client.city || undefined,
-      isActive: clientDistributor.client.user.isActive
+      isActive: clientDistributor.client.user.isActive,
     };
   }
 
-  async findByIdForDistributor(distributorId: string, clientId: string): Promise<Customer | null> {
+  async findByIdForDistributor(
+    distributorId: string,
+    clientId: string,
+  ): Promise<Customer | null> {
     const clientDistributor = await this.prisma.clientDistributor.findFirst({
       where: {
         distributorId: distributorId,
-        clientId: clientId
+        clientId: clientId,
       },
       include: {
         client: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
     if (!clientDistributor) return null;
@@ -108,16 +123,22 @@ export class PrismaCustomerRepository implements CustomerRepository {
       phone: clientDistributor.client.user.phone || undefined,
       address: clientDistributor.client.address || undefined,
       city: clientDistributor.client.city || undefined,
-      isActive: clientDistributor.client.user.isActive
+      isActive: clientDistributor.client.user.isActive,
     };
   }
 
-  async existsForDistributor(distributorId: string, name: string): Promise<boolean> {
+  async existsForDistributor(
+    distributorId: string,
+    name: string,
+  ): Promise<boolean> {
     const customer = await this.findByNameForDistributor(distributorId, name);
     return customer !== null;
   }
 
-  async searchForDistributor(distributorId: string, query: string): Promise<Customer[]> {
+  async searchForDistributor(
+    distributorId: string,
+    query: string,
+  ): Promise<Customer[]> {
     if (!query.trim()) return [];
 
     const normalizedQuery = query.trim().toLowerCase();
@@ -131,37 +152,37 @@ export class PrismaCustomerRepository implements CustomerRepository {
               {
                 name: {
                   contains: normalizedQuery,
-                  mode: 'insensitive'
-                }
+                  mode: "insensitive",
+                },
               },
               {
                 email: {
                   contains: normalizedQuery,
-                  mode: 'insensitive'
-                }
-              }
+                  mode: "insensitive",
+                },
+              },
             ],
-            isActive: true
-          }
-        }
+            isActive: true,
+          },
+        },
       },
       include: {
         client: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
-    return clientDistributors.map(cd => ({
+    return clientDistributors.map((cd) => ({
       id: cd.client.id,
       name: cd.client.user.name,
       email: cd.client.user.email,
       phone: cd.client.user.phone || undefined,
       address: cd.client.address || undefined,
       city: cd.client.city || undefined,
-      isActive: cd.client.user.isActive
+      isActive: cd.client.user.isActive,
     }));
   }
 }
