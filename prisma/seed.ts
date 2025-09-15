@@ -144,7 +144,7 @@ async function main() {
     data: {
       email: "admin@lacteosdelsur.com",
       name: "Ana García",
-      phone: "+54 341 234-5678",
+      phone: "+54 11 2345-5678",
       role: "DISTRIBUTOR_ADMIN",
     },
   });
