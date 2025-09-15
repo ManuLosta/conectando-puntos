@@ -5,5 +5,5 @@ export {
   type PrismaOrderRepository as OrderRepository,
   type OrderWithItems as Order,
   type CreateOrderInput,
-  type OrderItemInput as OrderItem
-} from './prisma-order-repo';
+  type OrderItemInput as OrderItem,
+} from "./prisma-order-repo";

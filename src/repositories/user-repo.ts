@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 export interface UserRepository {
   getSalespersonDistributor(salespersonId: string): Promise<string | null>;
@@ -9,25 +9,29 @@ export interface UserRepository {
 export class PrismaUserRepository implements UserRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async getSalespersonDistributor(salespersonId: string): Promise<string | null> {
+  async getSalespersonDistributor(
+    salespersonId: string,
+  ): Promise<string | null> {
     const salesperson = await this.prisma.salesperson.findUnique({
       where: { id: salespersonId },
-      select: { distributorId: true }
+      select: { distributorId: true },
     });
 
     return salesperson?.distributorId || null;
   }
 
-  async getSalespersonDistributorByPhone(phone: string): Promise<string | null> {
+  async getSalespersonDistributorByPhone(
+    phone: string,
+  ): Promise<string | null> {
     const salesperson = await this.prisma.salesperson.findFirst({
       where: {
         user: {
           phone: phone,
-          role: 'SALESPERSON',
-          isActive: true
-        }
+          role: "SALESPERSON",
+          isActive: true,
+        },
       },
-      select: { distributorId: true }
+      select: { distributorId: true },
     });
 
     return salesperson?.distributorId || null;
@@ -38,11 +42,11 @@ export class PrismaUserRepository implements UserRepository {
       where: {
         user: {
           phone: phone,
-          role: 'SALESPERSON',
-          isActive: true
-        }
+          role: "SALESPERSON",
+          isActive: true,
+        },
       },
-      select: { id: true }
+      select: { id: true },
     });
 
     return salesperson?.id || null;
