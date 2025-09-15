@@ -91,7 +91,6 @@ async function main() {
       name: "Distribuidora Central",
       address: "Av. Corrientes 1234",
       city: "Buenos Aires",
-      phone: "+54 11 4567-8901",
       email: "contacto@distribuidoracentral.com",
     },
   });
@@ -101,7 +100,6 @@ async function main() {
       name: "Lácteos del Sur",
       address: "Calle San Martín 567",
       city: "Rosario",
-      phone: "+54 341 456-7890",
       email: "ventas@lacteosdelsur.com",
     },
   });
@@ -146,7 +144,7 @@ async function main() {
     data: {
       email: "admin@lacteosdelsur.com",
       name: "Ana García",
-      phone: "+54 341 234-5678",
+      phone: "+54 11 2345-5678",
       role: "DISTRIBUTOR_ADMIN",
     },
   });
