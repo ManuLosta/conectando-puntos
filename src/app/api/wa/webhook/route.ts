@@ -187,7 +187,7 @@ async function processTextMessage(message: WhatsAppMessage): Promise<void> {
     await markReadWithTyping(message.id);
 
     const response = await runAgent({
-      sessionId: normalizedTo,
+      phoneNumber: normalizedTo,
       userText: text,
     });
 

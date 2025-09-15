@@ -1,6 +1,8 @@
 import { stepCountIs, generateText, ModelMessage } from "ai";
 import { chatModel } from "@/lib/ai/provider";
 import { tools } from "@/lib/ai/tools";
+import { phoneContext } from "@/lib/context/phone-context";
+import { requestContext } from "@/lib/context/request-context";
 
 const SYSTEM_PROMPT = `
 Eres un asistente de pedidos para vendedores de distribuidoras. Sé amable, colaborativo y usa 1–3 emojis cuando ayuden (sin exagerar). 😊🧾
@@ -64,10 +66,10 @@ function sanitizeHistory(msgs: ModelMessage[]): ModelMessage[] {
 }
 
 export async function runAgent({
-  sessionId = "default",
+  phoneNumber,
   userText,
 }: {
-  sessionId?: string;
+  phoneNumber: string;
   userText: string;
 }) {
   const trimmedText = userText.trim();
@@ -75,38 +77,65 @@ export async function runAgent({
     throw new Error("Message too short or empty");
   }
 
-  const prior = sessionMessages.get(sessionId) ?? [];
-  const msgs = sanitizeHistory(prior);
-  msgs.push({ role: "user", content: trimmedText });
+  // Set phone number in context for AI tools to access
+  phoneContext.setPhoneNumber(phoneNumber, phoneNumber);
 
-  const { response } = await generateText({
-    model: chatModel,
-    system: SYSTEM_PROMPT,
-    messages: msgs,
-    tools,
-    stopWhen: stepCountIs(8),
-    onStepFinish: ({ text, toolResults, toolCalls, finishReason, usage }) => {
-      console.log("Step finished:", {
-        text: JSON.stringify(text),
-        toolResults: JSON.stringify(toolResults),
-        toolCalls: JSON.stringify(toolCalls),
-        finishReason: JSON.stringify(finishReason),
-        usage: JSON.stringify(usage),
+  // Run the entire agent execution within request context
+  return requestContext.run(phoneNumber, async () => {
+    try {
+      const prior = sessionMessages.get(phoneNumber) ?? [];
+      if (prior.length === 0) {
+        setTimeout(
+          () => {
+            sessionMessages.delete(phoneNumber);
+          },
+          60 * 60 * 1000 * 6,
+        ); // 6h
+      }
+      const msgs = sanitizeHistory(prior);
+      msgs.push({ role: "user", content: trimmedText });
+
+      const { response } = await generateText({
+        model: chatModel,
+        system: SYSTEM_PROMPT,
+        messages: msgs,
+        tools,
+        stopWhen: stepCountIs(8),
+        onStepFinish: ({
+          text,
+          toolResults,
+          toolCalls,
+          finishReason,
+          usage,
+        }) => {
+          console.log("Step finished:", {
+            text: JSON.stringify(text),
+            toolResults: JSON.stringify(toolResults),
+            toolCalls: JSON.stringify(toolCalls),
+            finishReason: JSON.stringify(finishReason),
+            usage: JSON.stringify(usage),
+          });
+        },
       });
-    },
+
+      const sessionArr = sanitizeHistory(
+        sessionMessages.get(phoneNumber) ?? [],
+      );
+      sessionArr.push({ role: "user", content: trimmedText });
+      const last = response.messages[response.messages.length - 1];
+      const assistantText = extractTextContent(last?.content as unknown) || "";
+      if (assistantText) {
+        sessionArr.push({ role: "assistant", content: assistantText });
+      }
+      if (sessionArr.length > 12) {
+        sessionArr.splice(0, sessionArr.length - 12);
+      }
+      sessionMessages.set(phoneNumber, sessionArr);
+
+      return assistantText || "Entendido.";
+    } finally {
+      // Clear phone number from context after processing
+      phoneContext.clearPhoneNumber(phoneNumber);
+    }
   });
-
-  const sessionArr = sanitizeHistory(sessionMessages.get(sessionId) ?? []);
-  sessionArr.push({ role: "user", content: trimmedText });
-  const last = response.messages[response.messages.length - 1];
-  const assistantText = extractTextContent(last?.content as unknown) || "";
-  if (assistantText) {
-    sessionArr.push({ role: "assistant", content: assistantText });
-  }
-  if (sessionArr.length > 12) {
-    sessionArr.splice(0, sessionArr.length - 12);
-  }
-  sessionMessages.set(sessionId, sessionArr);
-
-  return assistantText || "Entendido.";
 }

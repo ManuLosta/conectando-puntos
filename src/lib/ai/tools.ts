@@ -5,8 +5,10 @@ import { orderService } from "@/services/order";
 import { customerService } from "@/services/customer";
 import { stockRepo } from "@/repositories/stock-repo";
 import { userRepo } from "@/repositories/user-repo";
+import { phoneContext } from "@/lib/context/phone-context";
 
-async function getDistributorFromContext(phone: string): Promise<string> {
+async function getDistributorFromContext(): Promise<string> {
+  const phone = phoneContext.requirePhoneNumber();
   const distributorId = await userRepo.getSalespersonDistributorByPhone(phone);
   if (!distributorId) {
     throw new Error(
@@ -19,13 +21,9 @@ async function getDistributorFromContext(phone: string): Promise<string> {
 export const consultarCatalogo = tool({
   description:
     "Consulta el catálogo completo de productos disponibles para la distribuidora del vendedor.",
-  inputSchema: z.object({
-    phone: z
-      .string()
-      .describe("Número de teléfono del vendedor que realiza la consulta"),
-  }),
-  execute: async ({ phone }) => {
-    const distributorId = await getDistributorFromContext(phone);
+  inputSchema: z.object({}),
+  execute: async () => {
+    const distributorId = await getDistributorFromContext();
     return catalogService.getCatalogForDistributor(distributorId);
   },
 });
@@ -34,15 +32,12 @@ export const buscarProductos = tool({
   description:
     "Busca productos por palabra clave o SKU en el catálogo de la distribuidora.",
   inputSchema: z.object({
-    phone: z
-      .string()
-      .describe("Número de teléfono del vendedor que realiza la búsqueda"),
     keyword: z
       .string()
       .describe("Palabra clave para buscar productos por nombre o SKU"),
   }),
-  execute: async ({ phone, keyword }) => {
-    const distributorId = await getDistributorFromContext(phone);
+  execute: async ({ keyword }) => {
+    const distributorId = await getDistributorFromContext();
     return catalogService.searchProductsByKeyword(distributorId, keyword);
   },
 });
@@ -51,13 +46,10 @@ export const consultarStock = tool({
   description:
     "Consulta stock de productos por búsqueda de texto o SKU. Puede buscar múltiples productos separados por comas.",
   inputSchema: z.object({
-    phone: z
-      .string()
-      .describe("Número de teléfono del vendedor que realiza la consulta"),
     query: z.string().describe("Texto de búsqueda para productos"),
   }),
-  execute: async ({ phone, query }) => {
-    const distributorId = await getDistributorFromContext(phone);
+  execute: async ({ query }) => {
+    const distributorId = await getDistributorFromContext();
     return stockRepo.searchForDistributor(distributorId, query);
   },
 });
@@ -66,9 +58,6 @@ export const crearOrden = tool({
   description:
     "Crea una orden completa para un cliente específico con validación de stock.",
   inputSchema: z.object({
-    phone: z
-      .string()
-      .describe("Número de teléfono del vendedor que crea la orden"),
     clientId: z.string().describe("ID del cliente para quien se crea la orden"),
     items: z
       .array(
@@ -89,7 +78,8 @@ export const crearOrden = tool({
       .describe("Dirección de entrega (opcional)"),
     notes: z.string().optional().describe("Notas adicionales (opcional)"),
   }),
-  execute: async ({ phone, clientId, items, deliveryAddress, notes }) => {
+  execute: async ({ clientId, items, deliveryAddress, notes }) => {
+    const phone = phoneContext.requirePhoneNumber();
     const salespersonId = await userRepo.getSalespersonIdByPhone(phone);
     if (!salespersonId) {
       throw new Error(`No se encontró vendedor con teléfono ${phone}`);
@@ -122,14 +112,13 @@ export const confirmarOrden = tool({
 export const listarClientes = tool({
   description: "Lista todos los clientes de la distribuidora del vendedor.",
   inputSchema: z.object({
-    phone: z.string().describe("Número de teléfono del vendedor"),
     query: z
       .string()
       .optional()
       .describe("Filtro opcional de búsqueda por nombre"),
   }),
-  execute: async ({ phone, query }) => {
-    const distributorId = await getDistributorFromContext(phone);
+  execute: async ({ query }) => {
+    const distributorId = await getDistributorFromContext();
 
     if (query) {
       return customerService.searchForDistributor(distributorId, query);
@@ -143,11 +132,10 @@ export const buscarClientes = tool({
   description:
     "Busca clientes por nombre o email en la distribuidora del vendedor.",
   inputSchema: z.object({
-    phone: z.string().describe("Número de teléfono del vendedor"),
     query: z.string().describe("Texto de búsqueda para clientes"),
   }),
-  execute: async ({ phone, query }) => {
-    const distributorId = await getDistributorFromContext(phone);
+  execute: async ({ query }) => {
+    const distributorId = await getDistributorFromContext();
     return customerService.searchForDistributor(distributorId, query);
   },
 });
