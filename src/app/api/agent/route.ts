@@ -3,7 +3,7 @@ import { runAgent } from "@/services/agent";
 
 export async function POST(req: Request) {
   try {
-    const { phoneNumber = "playground", text } = (await req.json()) as {
+    const { phoneNumber = "+54 11 3456-7890", text } = (await req.json()) as {
       phoneNumber?: string;
       text: string;
     };
