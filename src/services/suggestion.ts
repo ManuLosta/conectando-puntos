@@ -14,13 +14,15 @@ type Suggestion = {
 export const suggestionService = {
   async suggestProducts(
     distributorId: string,
-    customer: string,
+    clientId: string,
     topN = 5,
   ): Promise<Suggestion[]> {
-    if (
-      !(await customerService.existsForDistributor(distributorId, customer))
-    ) {
-      throw new Error(`Cliente no encontrado: ${customer}`);
+    const customer = await customerService.findByIdForDistributor(
+      distributorId,
+      clientId,
+    );
+    if (!customer) {
+      throw new Error(`Cliente no encontrado: ${clientId}`);
     }
 
     // Get stock and orders for the distributor

@@ -6,6 +6,7 @@ import { customerService } from "@/services/customer";
 import { stockRepo } from "@/repositories/stock-repo";
 import { userRepo } from "@/repositories/user-repo";
 import { phoneContext } from "@/lib/context/phone-context";
+import { suggestionService } from "@/services/suggestion";
 
 async function getDistributorFromContext(): Promise<string> {
   const phone = phoneContext.requirePhoneNumber();
@@ -109,6 +110,39 @@ export const confirmarOrden = tool({
   },
 });
 
+export const sugerirProductos = tool({
+  description:
+    "Sugiere productos para vender más: expiran pronto o habituales del cliente.",
+  inputSchema: z.object({
+    clientId: z.string().describe("ID del cliente para sugerencias"),
+    topN: z
+      .number()
+      .int()
+      .positive()
+      .max(10)
+      .optional()
+      .describe("Cantidad máxima de sugerencias (default 3–5)"),
+  }),
+  execute: async ({ clientId, topN }) => {
+    const distributorId = await getDistributorFromContext();
+    const suggestions = await suggestionService.suggestProducts(
+      distributorId,
+      clientId,
+      topN ?? 5,
+    );
+    // Return a concise list the model can present
+    return suggestions.map((s) => ({
+      sku: s.sku,
+      name: s.name,
+      reason: s.reason,
+      suggestedQty: s.suggestedQty,
+      price: s.price,
+      qtyAvailable: s.qtyAvailable,
+      expiryDays: s.expiryDays,
+    }));
+  },
+});
+
 export const listarClientes = tool({
   description: "Lista todos los clientes de la distribuidora del vendedor.",
   inputSchema: z.object({
@@ -156,6 +190,7 @@ export const tools = {
   consultarStock,
   crearOrden,
   confirmarOrden,
+  sugerirProductos,
   listarClientes,
   buscarClientes,
   obtenerOrden,
