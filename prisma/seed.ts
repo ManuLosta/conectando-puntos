@@ -271,6 +271,7 @@ async function main() {
     const client = await prisma.finalClient.create({
       data: {
         userId: clientUser.id,
+        name: clientData.name,
         address: clientData.address,
         city: clientData.city,
         phone: clientData.phone,

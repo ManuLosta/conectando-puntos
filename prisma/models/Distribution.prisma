@@ -57,6 +57,7 @@ model Salesperson {
 model FinalClient {
   id         String  @id @default(cuid())
   userId     String  @unique
+  name       String
   phone      String? @unique
   address    String?
   city       String?
