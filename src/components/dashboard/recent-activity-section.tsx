@@ -1,4 +1,4 @@
-import { dashboardService } from "@/services/dashboard";
+import { dashboardService } from "@/services/dashboard.service";
 import { DollarSign, Package, CheckCircle, ClipboardList } from "lucide-react";
 
 export async function RecentActivitySection() {

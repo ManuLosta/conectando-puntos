@@ -1,5 +1,5 @@
-import { stockRepo, StockItem } from "@/repositories/stock-repo";
-import { customerService } from "@/services/customer";
+import { stockRepo, StockItem } from "@/repositories/stock.repository";
+import { customerService } from "@/services/customer.service";
 
 type Suggestion = {
   sku: string;

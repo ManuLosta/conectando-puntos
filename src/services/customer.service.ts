@@ -1,4 +1,4 @@
-import { customerRepo } from "@/repositories/customer-repo";
+import { customerRepo } from "@/repositories/customer.repository";
 import { Customer } from "@/domain/types";
 
 export interface CustomerService {

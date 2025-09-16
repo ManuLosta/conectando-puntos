@@ -1,8 +1,8 @@
-import { orderRepo } from "@/repositories/order-repo";
-import { customerService } from "@/services/customer";
-import { stockRepo } from "@/repositories/stock-repo";
-import { userRepo } from "@/repositories/user-repo";
-import { OrderWithItems } from "@/repositories/prisma-order-repo";
+import { orderRepo } from "@/repositories/order.repository";
+import { customerService } from "@/services/customer.service";
+import { stockRepo } from "@/repositories/stock.repository";
+import { userRepo } from "@/repositories/user.repository";
+import { OrderWithItems } from "@/repositories/order.repository";
 
 export interface OrderService {
   createOrderForSalesperson(

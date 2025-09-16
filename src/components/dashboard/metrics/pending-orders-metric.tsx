@@ -1,6 +1,6 @@
 import { MetricsCard } from "./metrics-card";
 import { Clock } from "lucide-react";
-import { dashboardService } from "@/services/dashboard";
+import { dashboardService } from "@/services/dashboard.service";
 
 export async function PendingOrdersMetric() {
   const data = await dashboardService.getPendingOrders();

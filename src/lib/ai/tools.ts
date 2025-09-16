@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { tool } from "ai";
-import { catalogService } from "@/services/catalog";
-import { orderService } from "@/services/order";
-import { customerService } from "@/services/customer";
-import { stockRepo } from "@/repositories/stock-repo";
-import { userRepo } from "@/repositories/user-repo";
+import { catalogService } from "@/services/catalog.service";
+import { orderService } from "@/services/order.service";
+import { customerService } from "@/services/customer.service";
+import { stockRepo } from "@/repositories/stock.repository";
+import { userRepo } from "@/repositories/user.repository";
 import { phoneContext } from "@/lib/context/phone-context";
-import { suggestionService } from "@/services/suggestion";
+import { suggestionService } from "@/services/suggestion.service";
 
 async function getDistributorFromContext(): Promise<string> {
   const phone = phoneContext.requirePhoneNumber();
