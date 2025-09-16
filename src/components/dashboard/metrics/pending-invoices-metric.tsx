@@ -1,6 +1,6 @@
 import { MetricsCard } from "./metrics-card";
 import { CreditCard } from "lucide-react";
-import { dashboardService } from "@/services/dashboard";
+import { dashboardService } from "@/services/dashboard.service";
 
 export async function PendingInvoicesMetric() {
   const data = await dashboardService.getPendingInvoices();

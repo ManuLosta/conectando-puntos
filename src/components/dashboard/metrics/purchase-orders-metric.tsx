@@ -1,6 +1,6 @@
 import { MetricsCard } from "./metrics-card";
 import { Package } from "lucide-react";
-import { dashboardService } from "@/services/dashboard";
+import { dashboardService } from "@/services/dashboard.service";
 
 export async function PurchaseOrdersMetric() {
   const data = await dashboardService.getPurchaseOrders();

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Package, Users, FileText } from "lucide-react";
 import Link from "next/link";
-import type { QuickAction } from "@/services/dashboard";
+import type { QuickAction } from "@/services/dashboard.service";
 
 interface QuickActionsProps {
   actions: QuickAction[];

@@ -43,7 +43,7 @@ export class PrismaStockRepository implements StockRepository {
     });
 
     return inventoryItems.map((item) => ({
-      id: item.id,
+      id: item.product.id,
       name: item.product.name,
       sku: item.product.sku,
       stock: item.stock,
@@ -90,7 +90,7 @@ export class PrismaStockRepository implements StockRepository {
     });
 
     return inventoryItems.map((item) => ({
-      id: item.id,
+      id: item.product.id,
       name: item.product.name,
       sku: item.product.sku,
       stock: item.stock,
@@ -119,7 +119,7 @@ export class PrismaStockRepository implements StockRepository {
     if (!inventoryItem) return null;
 
     return {
-      id: inventoryItem.id,
+      id: inventoryItem.product.id,
       name: inventoryItem.product.name,
       sku: inventoryItem.product.sku,
       stock: inventoryItem.stock,

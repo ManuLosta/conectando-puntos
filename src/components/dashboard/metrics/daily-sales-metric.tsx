@@ -1,6 +1,6 @@
 import { MetricsCard } from "./metrics-card";
 import { DollarSign } from "lucide-react";
-import { dashboardService } from "@/services/dashboard";
+import { dashboardService } from "@/services/dashboard.service";
 
 export async function DailySalesMetric() {
   const data = await dashboardService.getDailySales();

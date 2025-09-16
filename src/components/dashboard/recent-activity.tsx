@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, Package, CheckCircle, ClipboardList } from "lucide-react";
-import type { RecentActivity } from "@/services/dashboard";
+import type { RecentActivity } from "@/services/dashboard.service";
 
 interface RecentActivityProps {
   activities: RecentActivity[];

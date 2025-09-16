@@ -40,13 +40,13 @@ export interface OrderWithItems {
   }>;
 }
 
-export interface PrismaOrderRepository {
+export interface OrderRepository {
   createOrder(orderData: CreateOrderInput): Promise<OrderWithItems>;
   findById(id: string): Promise<OrderWithItems | null>;
   findByOrderNumber(orderNumber: string): Promise<OrderWithItems | null>;
 }
 
-export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
+export class OrderRepositoryImpl implements OrderRepository {
   constructor(private prisma: PrismaClient) {}
 
   private generateOrderNumber(): string {
@@ -211,4 +211,8 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
 }
 
 const prisma = new PrismaClient();
-export const prismaOrderRepo = new PrismaOrderRepositoryImpl(prisma);
+export const orderRepo = new OrderRepositoryImpl(prisma);
+
+// Export types with cleaner names
+export type Order = OrderWithItems;
+export type OrderItem = OrderItemInput;

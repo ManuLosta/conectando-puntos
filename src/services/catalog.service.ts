@@ -1,10 +1,10 @@
-import { catalogRepo, CatalogItem } from "@/repositories/catalog-repo";
+import { catalogRepo, CatalogItem } from "@/repositories/catalog.repository";
 import {
-  prismaOrderRepo,
+  orderRepo,
   CreateOrderInput,
   OrderWithItems,
-} from "@/repositories/prisma-order-repo";
-import { userRepo } from "@/repositories/user-repo";
+} from "@/repositories/order.repository";
+import { userRepo } from "@/repositories/user.repository";
 
 export interface CatalogService {
   getCatalogForDistributor(distributorId: string): Promise<CatalogItem[]>;
@@ -87,7 +87,7 @@ class CatalogServiceImpl implements CatalogService {
       items: validatedItems,
     };
 
-    return prismaOrderRepo.createOrder(validatedOrderData);
+    return orderRepo.createOrder(validatedOrderData);
   }
 
   private async getDistributorIdFromSalesperson(
