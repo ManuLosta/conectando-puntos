@@ -6,7 +6,6 @@ import {
   ConversationContent,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
-import { Button } from "@/components/ui/button";
 import { ArrowUpIcon, Loader2Icon } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useChat } from "@ai-sdk/react";
