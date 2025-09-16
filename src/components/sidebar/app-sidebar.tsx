@@ -75,10 +75,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupLabel>Labs</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Agent Playground">
+              <SidebarMenuButton asChild tooltip="Agente de Ventas">
                 <a href="/agent-playground">
                   <BotIcon />
-                  <span>Agent Playground</span>
+                  <span>Agente de Ventas</span>
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>

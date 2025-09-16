@@ -6,14 +6,8 @@ import {
   ConversationContent,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
-import {
-  PromptInput,
-  PromptInputBody,
-  type PromptInputMessage,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputToolbar,
-} from "@/components/ai-elements/prompt-input";
+import { Button } from "@/components/ui/button";
+import { ArrowUpIcon, Loader2Icon } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
@@ -30,19 +24,23 @@ export default function AgentPlaygroundPage() {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status } = useChat();
 
-  const handleSubmit = (message: PromptInputMessage) => {
-    const hasText = Boolean(message.text);
-    const hasAttachments = Boolean(message.files?.length);
-
-    if (!(hasText || hasAttachments)) {
-      return;
-    }
-
-    sendMessage({
-      text: message.text || "Sent with attachments",
-    });
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text) return;
+    sendMessage({ text });
     setInput("");
-  };
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const text = input.trim();
+      if (!text) return;
+      sendMessage({ text });
+      setInput("");
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 relative size-full h-full">
@@ -113,21 +111,33 @@ export default function AgentPlaygroundPage() {
           </ConversationContent>
         </Conversation>
 
-        <PromptInput onSubmit={handleSubmit} className="mt-4" multiple>
-          <PromptInputBody>
-            <PromptInputTextarea
-              onChange={(e) => setInput(e.target.value)}
+        <form
+          onSubmit={onSubmit}
+          className="mt-4 sticky bottom-2 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-2"
+        >
+          <div className="flex items-center gap-2 rounded-full border bg-background px-3 py-2 shadow-sm transition-shadow focus-within:border-transparent focus-within:ring-2 focus-within:ring-primary focus-within:shadow-md">
+            <textarea
+              className="flex-1 focus:outline-none shadow-none max-h-40 resize-none border-0 bg-transparent p-0 focus-visible:ring-0 p-2"
               value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
               placeholder="Escribe tu mensaje aquí"
+              rows={1}
             />
-          </PromptInputBody>
-          <PromptInputToolbar>
-            <PromptInputSubmit
-              disabled={!input && status !== "submitted"}
-              status={status}
-            />
-          </PromptInputToolbar>
-        </PromptInput>
+            <Button
+              type="submit"
+              size="icon"
+              className="shrink-0 rounded-full"
+              disabled={!input.trim() || status === "submitted"}
+            >
+              {status === "submitted" ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <ArrowUpIcon className="size-4" />
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
