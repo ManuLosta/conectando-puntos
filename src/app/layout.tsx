@@ -16,6 +16,11 @@ const roboto = Roboto({
   variable: "--text-family",
 });
 
+export const metadata: Metadata = {
+  title: "Conectando Puntos",
+  description: "Conectando Puntos",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -1,158 +1,154 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState, Fragment, useEffect, useRef } from "react";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Conversation,
+  ConversationContent,
+} from "@/components/ai-elements/conversation";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-
-type Msg = { role: "user" | "agent"; text: string };
+import { ArrowUpIcon, Loader2Icon } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useChat } from "@ai-sdk/react";
+import { Response } from "@/components/ai-elements/response";
+import { Loader } from "@/components/ai-elements/loader";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+import { ToolUIPart } from "ai";
 
 export default function AgentPlaygroundPage() {
-  const [sessionId, setSessionId] = useState("");
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const endRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const saved =
-      typeof window !== "undefined"
-        ? localStorage.getItem("agentSessionId")
-        : null;
-    if (saved) {
-      setSessionId(saved);
-    } else {
-      const id = `play-${Math.random().toString(36).slice(2, 8)}`;
-      setSessionId(id);
-      if (typeof window !== "undefined")
-        localStorage.setItem("agentSessionId", id);
-    }
-  }, []);
+  const { messages, sendMessage, status } = useChat();
+  const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length]);
 
-  const example = useMemo(
-    () => "Supermercado Don Pepe: 10 kg de queso la serenisima",
-    [],
-  );
-
-  async function send() {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     const text = input.trim();
-    if (!text || busy) return;
-    setBusy(true);
-    setMessages((m) => [...m, { role: "user", text }]);
+    if (!text) return;
+    sendMessage({ text });
     setInput("");
-    try {
-      const res = await fetch("/api/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, text }),
-      });
-      const data = (await res.json()) as { reply?: string; error?: string };
-      const reply = data.reply ?? data.error ?? "(sin respuesta)";
-      setMessages((m) => [...m, { role: "agent", text: reply }]);
-    } catch {
-      setMessages((m) => [
-        ...m,
-        { role: "agent", text: "Error llamando al agente" },
-      ]);
-    } finally {
-      setBusy(false);
-    }
   }
 
-  function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void send();
+      const text = input.trim();
+      if (!text) return;
+      sendMessage({ text });
+      setInput("");
     }
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Playground del Agente</CardTitle>
-          <p className="text-sm text-gray-600">
-            Proba sin WhatsApp. Formato: <code>Cliente: items</code>. Ej.:{" "}
-            {example}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Label className="min-w-[52px]">Sesión</Label>
-            <Input
-              value={sessionId}
-              onChange={(e) => {
-                setSessionId(e.target.value);
-                if (typeof window !== "undefined")
-                  localStorage.setItem("agentSessionId", e.target.value);
-              }}
+    <div className="max-w-4xl mx-auto p-6 relative size-full h-full">
+      <div className="flex h-full flex-col">
+        <div className="sticky top-0 z-10 -mx-6 mb-2 border-b bg-background/80 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger />
+            <h1 className="text-base font-semibold">Agente de Ventas</h1>
+          </div>
+        </div>
+
+        <Conversation className="flex-1 min-h-0">
+          <ConversationContent>
+            {messages.map((message) => (
+              <div key={message.id}>
+                {message.parts.map((part, i) => {
+                  switch (part.type) {
+                    case "text":
+                      return (
+                        <Fragment key={`${message.id}-${i}`}>
+                          <Message from={message.role as "user" | "assistant"}>
+                            <MessageContent>
+                              <Response>{part.text}</Response>
+                            </MessageContent>
+                          </Message>
+                        </Fragment>
+                      );
+                    default:
+                      if (part.type?.startsWith("tool-")) {
+                        const toolType = part.type as `tool-${string}`;
+                        const state = (part as ToolUIPart).state as
+                          | "input-streaming"
+                          | "input-available"
+                          | "output-available"
+                          | "output-error";
+                        const input = (part as ToolUIPart).input;
+                        const output = (part as ToolUIPart).output;
+                        const errorText = (part as ToolUIPart).errorText as
+                          | string
+                          | null
+                          | undefined;
+
+                        return (
+                          <div className="my-2" key={`${message.id}-tool-${i}`}>
+                            <Tool
+                              defaultOpen={
+                                state === "output-available" ||
+                                state === "output-error"
+                              }
+                            >
+                              <ToolHeader type={toolType} state={state} />
+                              <ToolContent>
+                                {typeof input !== "undefined" && (
+                                  <ToolInput input={input} />
+                                )}
+                                <ToolOutput
+                                  errorText={errorText ?? undefined}
+                                  output={output}
+                                />
+                              </ToolContent>
+                            </Tool>
+                          </div>
+                        );
+                      }
+                      return null;
+                  }
+                })}
+              </div>
+            ))}
+            {status === "submitted" && <Loader />}
+          </ConversationContent>
+          <div ref={endRef} />
+        </Conversation>
+
+        <form
+          onSubmit={onSubmit}
+          className="mt-4 sticky bottom-2 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-2"
+        >
+          <div className="flex items-center gap-2 rounded-full border bg-background px-3 py-2 shadow-sm transition-shadow focus-within:border-transparent focus-within:ring-2 focus-within:ring-primary focus-within:shadow-md">
+            <textarea
+              className="flex-1 focus:outline-none shadow-none max-h-40 resize-none border-0 bg-transparent p-0 focus-visible:ring-0 p-2"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Escribe tu mensaje aquí"
+              rows={1}
             />
             <Button
-              variant="outline"
-              onClick={() => {
-                const id = `play-${Math.random().toString(36).slice(2, 8)}`;
-                setSessionId(id);
-                if (typeof window !== "undefined")
-                  localStorage.setItem("agentSessionId", id);
-              }}
+              type="submit"
+              size="icon"
+              className="rounded-full"
+              disabled={!input.trim() || status === "submitted"}
             >
-              Nueva sesión
+              {status === "submitted" ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <ArrowUpIcon className="size-4" />
+              )}
             </Button>
           </div>
-
-          <div className="h-[50vh] overflow-auto rounded-md border bg-white">
-            {messages.length === 0 && (
-              <div className="p-3 text-sm text-gray-500">
-                Empezá con: <span className="font-mono">{example}</span>
-              </div>
-            )}
-            <div className="space-y-3 p-3">
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={m.role === "user" ? "text-right" : "text-left"}
-                >
-                  <div
-                    className={
-                      "inline-block max-w-[90%] whitespace-pre-wrap rounded-md px-3 py-2 " +
-                      (m.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "border bg-gray-50 text-gray-900")
-                    }
-                  >
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div ref={endRef} />
-          </div>
-        </CardContent>
-        <CardFooter className="gap-2">
-          <Textarea
-            className="min-h-[60px] flex-1"
-            placeholder={example}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-          />
-          <Button onClick={send} disabled={busy || !input.trim()}>
-            {busy ? "Enviando..." : "Enviar"}
-          </Button>
-        </CardFooter>
-      </Card>
+        </form>
+      </div>
     </div>
   );
 }
