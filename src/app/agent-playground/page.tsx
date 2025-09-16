@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect, useRef } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -8,6 +8,7 @@ import {
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import { ArrowUpIcon, Loader2Icon } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useChat } from "@ai-sdk/react";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
@@ -23,6 +24,11 @@ import { ToolUIPart } from "ai";
 export default function AgentPlaygroundPage() {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status } = useChat();
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,12 +50,15 @@ export default function AgentPlaygroundPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 relative size-full h-full">
-      <div className="flex flex-col h-full">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold">Playground del Agente</h1>
+      <div className="flex h-full flex-col">
+        <div className="sticky top-0 z-10 -mx-6 mb-2 border-b bg-background/80 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger />
+            <h1 className="text-base font-semibold">Agente de Ventas</h1>
+          </div>
         </div>
 
-        <Conversation className="h-full">
+        <Conversation className="flex-1 min-h-0">
           <ConversationContent>
             {messages.map((message) => (
               <div key={message.id}>
@@ -109,6 +118,7 @@ export default function AgentPlaygroundPage() {
             ))}
             {status === "submitted" && <Loader />}
           </ConversationContent>
+          <div ref={endRef} />
         </Conversation>
 
         <form
@@ -127,7 +137,7 @@ export default function AgentPlaygroundPage() {
             <Button
               type="submit"
               size="icon"
-              className="shrink-0 rounded-full"
+              className="rounded-full"
               disabled={!input.trim() || status === "submitted"}
             >
               {status === "submitted" ? (
