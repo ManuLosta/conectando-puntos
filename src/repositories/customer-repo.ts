@@ -23,6 +23,7 @@ export interface CustomerRepository {
     distributorId: string,
     phone: string,
   ): Promise<Customer | null>;
+  existsForDistributor(distributorId: string, name: string): Promise<boolean>;
   searchForDistributor(
     distributorId: string,
     query: string,
@@ -137,6 +138,14 @@ export class PrismaCustomerRepository implements CustomerRepository {
       city: clientDistributor.client.city || undefined,
       postalCode: clientDistributor.client.postalCode || undefined,
     };
+  }
+
+  async existsForDistributor(
+    distributorId: string,
+    name: string,
+  ): Promise<boolean> {
+    const customer = await this.findByNameForDistributor(distributorId, name);
+    return customer !== null;
   }
 
   async searchForDistributor(
