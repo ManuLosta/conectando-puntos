@@ -68,6 +68,7 @@ class OrderServiceImpl implements OrderService {
     const orderData = {
       clientId,
       salespersonId,
+      distributorId,
       items: orderItems,
       deliveryAddress,
       notes,

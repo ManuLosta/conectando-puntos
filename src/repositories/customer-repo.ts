@@ -3,22 +3,25 @@ import { PrismaClient } from "@prisma/client";
 export interface Customer {
   id: string;
   name: string;
-  email?: string;
   phone?: string;
   address?: string;
   city?: string;
-  isActive: boolean;
+  postalCode?: string;
 }
 
 export interface CustomerRepository {
   listForDistributor(distributorId: string): Promise<Customer[]>;
+  findByIdForDistributor(
+    distributorId: string,
+    clientId: string,
+  ): Promise<Customer | null>;
   findByNameForDistributor(
     distributorId: string,
     name: string,
   ): Promise<Customer | null>;
-  findByIdForDistributor(
+  findByPhoneForDistributor(
     distributorId: string,
-    clientId: string,
+    phone: string,
   ): Promise<Customer | null>;
   existsForDistributor(distributorId: string, name: string): Promise<boolean>;
   searchForDistributor(
@@ -36,22 +39,17 @@ export class PrismaCustomerRepository implements CustomerRepository {
         distributorId: distributorId,
       },
       include: {
-        client: {
-          include: {
-            user: true,
-          },
-        },
+        client: true,
       },
     });
 
     return clientDistributors.map((cd) => ({
       id: cd.client.id,
-      name: cd.client.user.name,
-      email: cd.client.user.email,
-      phone: cd.client.user.phone || undefined,
+      name: cd.client.name,
+      phone: cd.client.phone || undefined,
       address: cd.client.address || undefined,
       city: cd.client.city || undefined,
-      isActive: cd.client.user.isActive,
+      postalCode: cd.client.postalCode || undefined,
     }));
   }
 
@@ -65,21 +63,14 @@ export class PrismaCustomerRepository implements CustomerRepository {
       where: {
         distributorId: distributorId,
         client: {
-          user: {
-            name: {
-              contains: normalizedName,
-              mode: "insensitive",
-            },
-            isActive: true,
+          name: {
+            contains: normalizedName,
+            mode: "insensitive",
           },
         },
       },
       include: {
-        client: {
-          include: {
-            user: true,
-          },
-        },
+        client: true,
       },
     });
 
@@ -87,12 +78,39 @@ export class PrismaCustomerRepository implements CustomerRepository {
 
     return {
       id: clientDistributor.client.id,
-      name: clientDistributor.client.user.name,
-      email: clientDistributor.client.user.email,
-      phone: clientDistributor.client.user.phone || undefined,
+      name: clientDistributor.client.name,
+      phone: clientDistributor.client.phone || undefined,
       address: clientDistributor.client.address || undefined,
       city: clientDistributor.client.city || undefined,
-      isActive: clientDistributor.client.user.isActive,
+      postalCode: clientDistributor.client.postalCode || undefined,
+    };
+  }
+
+  async findByPhoneForDistributor(
+    distributorId: string,
+    phone: string,
+  ): Promise<Customer | null> {
+    const clientDistributor = await this.prisma.clientDistributor.findFirst({
+      where: {
+        distributorId: distributorId,
+        client: {
+          phone: phone,
+        },
+      },
+      include: {
+        client: true,
+      },
+    });
+
+    if (!clientDistributor) return null;
+
+    return {
+      id: clientDistributor.client.id,
+      name: clientDistributor.client.name,
+      phone: clientDistributor.client.phone || undefined,
+      address: clientDistributor.client.address || undefined,
+      city: clientDistributor.client.city || undefined,
+      postalCode: clientDistributor.client.postalCode || undefined,
     };
   }
 
@@ -106,11 +124,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
         clientId: clientId,
       },
       include: {
-        client: {
-          include: {
-            user: true,
-          },
-        },
+        client: true,
       },
     });
 
@@ -118,12 +132,11 @@ export class PrismaCustomerRepository implements CustomerRepository {
 
     return {
       id: clientDistributor.client.id,
-      name: clientDistributor.client.user.name,
-      email: clientDistributor.client.user.email,
-      phone: clientDistributor.client.user.phone || undefined,
+      name: clientDistributor.client.name,
+      phone: clientDistributor.client.phone || undefined,
       address: clientDistributor.client.address || undefined,
       city: clientDistributor.client.city || undefined,
-      isActive: clientDistributor.client.user.isActive,
+      postalCode: clientDistributor.client.postalCode || undefined,
     };
   }
 
@@ -147,42 +160,46 @@ export class PrismaCustomerRepository implements CustomerRepository {
       where: {
         distributorId: distributorId,
         client: {
-          user: {
-            OR: [
-              {
-                name: {
-                  contains: normalizedQuery,
-                  mode: "insensitive",
-                },
+          OR: [
+            {
+              name: {
+                contains: normalizedQuery,
+                mode: "insensitive",
               },
-              {
-                email: {
-                  contains: normalizedQuery,
-                  mode: "insensitive",
-                },
+            },
+            {
+              phone: {
+                contains: normalizedQuery,
+                mode: "insensitive",
               },
-            ],
-            isActive: true,
-          },
+            },
+            {
+              address: {
+                contains: normalizedQuery,
+                mode: "insensitive",
+              },
+            },
+            {
+              city: {
+                contains: normalizedQuery,
+                mode: "insensitive",
+              },
+            },
+          ],
         },
       },
       include: {
-        client: {
-          include: {
-            user: true,
-          },
-        },
+        client: true,
       },
     });
 
     return clientDistributors.map((cd) => ({
       id: cd.client.id,
-      name: cd.client.user.name,
-      email: cd.client.user.email,
-      phone: cd.client.user.phone || undefined,
+      name: cd.client.name,
+      phone: cd.client.phone || undefined,
       address: cd.client.address || undefined,
       city: cd.client.city || undefined,
-      isActive: cd.client.user.isActive,
+      postalCode: cd.client.postalCode || undefined,
     }));
   }
 }

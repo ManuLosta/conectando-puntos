@@ -34,8 +34,8 @@ export class PrismaCatalogRepository implements CatalogRepository {
   ): Promise<CatalogItem[]> {
     const inventoryItems = await this.prisma.inventoryItem.findMany({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           isActive: true,
         },
       },
@@ -61,8 +61,8 @@ export class PrismaCatalogRepository implements CatalogRepository {
   ): Promise<CatalogItem[]> {
     const inventoryItems = await this.prisma.inventoryItem.findMany({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           isActive: true,
           OR: [
             {
@@ -102,8 +102,8 @@ export class PrismaCatalogRepository implements CatalogRepository {
   ): Promise<CatalogItem | null> {
     const inventoryItem = await this.prisma.inventoryItem.findFirst({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           sku: sku,
           isActive: true,
         },
@@ -132,8 +132,8 @@ export class PrismaCatalogRepository implements CatalogRepository {
   ): Promise<CatalogItem[]> {
     const inventoryItems = await this.prisma.inventoryItem.findMany({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           sku: {
             in: skus,
           },

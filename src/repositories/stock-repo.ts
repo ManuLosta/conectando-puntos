@@ -32,8 +32,8 @@ export class PrismaStockRepository implements StockRepository {
   async getAllForDistributor(distributorId: string): Promise<StockItem[]> {
     const inventoryItems = await this.prisma.inventoryItem.findMany({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           isActive: true,
         },
       },
@@ -43,7 +43,7 @@ export class PrismaStockRepository implements StockRepository {
     });
 
     return inventoryItems.map((item) => ({
-      id: item.product.id,
+      id: item.id,
       name: item.product.name,
       sku: item.product.sku,
       stock: item.stock,
@@ -65,8 +65,8 @@ export class PrismaStockRepository implements StockRepository {
 
     const inventoryItems = await this.prisma.inventoryItem.findMany({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           isActive: true,
           OR: terms.flatMap((term) => [
             {
@@ -90,7 +90,7 @@ export class PrismaStockRepository implements StockRepository {
     });
 
     return inventoryItems.map((item) => ({
-      id: item.product.id,
+      id: item.id,
       name: item.product.name,
       sku: item.product.sku,
       stock: item.stock,
@@ -105,8 +105,8 @@ export class PrismaStockRepository implements StockRepository {
   ): Promise<StockItem | null> {
     const inventoryItem = await this.prisma.inventoryItem.findFirst({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           sku: sku,
           isActive: true,
         },
@@ -119,7 +119,7 @@ export class PrismaStockRepository implements StockRepository {
     if (!inventoryItem) return null;
 
     return {
-      id: inventoryItem.product.id,
+      id: inventoryItem.id,
       name: inventoryItem.product.name,
       sku: inventoryItem.product.sku,
       stock: inventoryItem.stock,
@@ -135,8 +135,8 @@ export class PrismaStockRepository implements StockRepository {
   ): Promise<void> {
     const inventoryItem = await this.prisma.inventoryItem.findFirst({
       where: {
-        distributorId: distributorId,
         product: {
+          distributorId: distributorId,
           sku: sku,
         },
       },
