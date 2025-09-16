@@ -225,35 +225,35 @@ async function main() {
       email: "compras@donpepe.com",
       address: "Av. Belgrano 456",
       city: "Buenos Aires",
-      phone: "+54 11 1234-5678",
+      phone: "+54 11 1111-1111",
     },
     {
       name: "Almacén La Esquina",
       email: "pedidos@laesquina.com",
       address: "Rivadavia 789",
       city: "Buenos Aires",
-      phone: "+54 11 2345-6789",
+      phone: "+54 11 2222-2222",
     },
     {
       name: "MaxiKiosco Centro",
       email: "ventas@maxikiosco.com",
       address: "Córdoba 123",
       city: "Buenos Aires",
-      phone: "+54 11 3456-7890",
+      phone: "+54 11 3333-3333",
     },
     {
       name: "Mercadito del Barrio",
       email: "info@mercadito.com",
       address: "San Juan 456",
       city: "Rosario",
-      phone: "+54 341 123-4567",
+      phone: "+54 341 111-1111",
     },
     {
       name: "Almacén San José",
       email: "contacto@sanjose.com",
       address: "Mitre 789",
       city: "Rosario",
-      phone: "+54 341 234-5678",
+      phone: "+54 341 222-2222",
     },
   ];
 
@@ -485,11 +485,11 @@ async function main() {
   console.log("Salesperson 1: +54 11 3456-7890 (Zona Norte)");
   console.log("Salesperson 2: +54 11 4567-8901 (Zona Sur)");
   console.log("Salesperson 3: +54 341 345-6789 (Centro)");
-  console.log("Client 1: +54 11 1234-5678 (Supermercado Don Pepe)");
-  console.log("Client 2: +54 11 2345-6789 (Almacén La Esquina)");
-  console.log("Client 3: +54 11 3456-7890 (MaxiKiosco Centro)");
-  console.log("Client 4: +54 341 123-4567 (Mercadito del Barrio)");
-  console.log("Client 5: +54 341 234-5678 (Almacén San José)");
+  console.log("Client 1: +54 11 1111-1111 (Supermercado Don Pepe)");
+  console.log("Client 2: +54 11 2222-2222 (Almacén La Esquina)");
+  console.log("Client 3: +54 11 3333-3333 (MaxiKiosco Centro)");
+  console.log("Client 4: +54 341 111-1111 (Mercadito del Barrio)");
+  console.log("Client 5: +54 341 222-2222 (Almacén San José)");
 }
 
 main()
