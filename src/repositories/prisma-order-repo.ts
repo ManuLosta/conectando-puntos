@@ -8,6 +8,7 @@ export interface OrderItemInput {
 }
 
 export interface CreateOrderInput {
+  distributorId: string;
   clientId: string;
   salespersonId: string;
   items: OrderItemInput[];
@@ -20,6 +21,7 @@ export interface OrderWithItems {
   orderNumber: string;
   status: string;
   total: number;
+  distributorId: string;
   clientId: string | null;
   salespersonId: string | null;
   deliveryAddress: string | null;
@@ -64,6 +66,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
 
     const order = await this.prisma.order.create({
       data: {
+        distributorId: orderData.distributorId,
         orderNumber,
         clientId: orderData.clientId,
         salespersonId: orderData.salespersonId,
@@ -95,6 +98,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
 
     return {
       id: order.id,
+      distributorId: order.distributorId,
       orderNumber: order.orderNumber,
       status: order.status,
       total: Number(order.total),
@@ -103,7 +107,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
       deliveryAddress: order.deliveryAddress,
       notes: order.notes,
       createdAt: order.createdAt,
-      items: order.items.map((item) => ({
+      items: order.items?.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
@@ -138,6 +142,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
 
     return {
       id: order.id,
+      distributorId: order.distributorId,
       orderNumber: order.orderNumber,
       status: order.status,
       total: Number(order.total),
@@ -146,7 +151,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
       deliveryAddress: order.deliveryAddress,
       notes: order.notes,
       createdAt: order.createdAt,
-      items: order.items.map((item) => ({
+      items: order.items?.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
@@ -181,6 +186,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
 
     return {
       id: order.id,
+      distributorId: order.distributorId,
       orderNumber: order.orderNumber,
       status: order.status,
       total: Number(order.total),
@@ -189,7 +195,7 @@ export class PrismaOrderRepositoryImpl implements PrismaOrderRepository {
       deliveryAddress: order.deliveryAddress,
       notes: order.notes,
       createdAt: order.createdAt,
-      items: order.items.map((item) => ({
+      items: order.items?.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,

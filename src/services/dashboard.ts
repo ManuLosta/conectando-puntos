@@ -38,14 +38,11 @@ interface OrderWithRelations {
   total: number | string | object;
   createdAt: Date;
   client?: {
-    user: {
-      name: string;
-    };
+    name: string;
+    phone: string | null;
   } | null;
   salesperson?: {
-    user: {
-      name: string;
-    };
+    phone: string | null;
   } | null;
 }
 
@@ -301,16 +298,8 @@ export class DashboardService {
         createdAt: "desc",
       },
       include: {
-        client: {
-          include: {
-            user: true,
-          },
-        },
-        salesperson: {
-          include: {
-            user: true,
-          },
-        },
+        client: true,
+        salesperson: true,
       },
     });
 
@@ -327,16 +316,16 @@ export class DashboardService {
       switch (order.status) {
         case "PENDING":
           type = "Venta";
-          description = `Pedido ${order.orderNumber} - ${order.client?.user.name || "Cliente"}`;
+          description = `Pedido ${order.orderNumber} - ${order.client?.name || "Cliente"}`;
           amount = Number(order.total);
           break;
         case "IN_PREPARATION":
           type = "Compra";
-          description = `Preparación ${order.orderNumber} - ${order.salesperson?.user.name || "Vendedor"}`;
+          description = `Preparación ${order.orderNumber} - ${order.salesperson?.phone || "Vendedor"}`;
           break;
         case "DELIVERED":
           type = "Pago";
-          description = `Entrega ${order.orderNumber} - ${order.client?.user.name || "Cliente"}`;
+          description = `Entrega ${order.orderNumber} - ${order.client?.name || "Cliente"}`;
           amount = Number(order.total);
           break;
         default:

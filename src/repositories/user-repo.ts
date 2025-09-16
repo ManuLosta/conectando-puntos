@@ -25,11 +25,7 @@ export class PrismaUserRepository implements UserRepository {
   ): Promise<string | null> {
     const salesperson = await this.prisma.salesperson.findFirst({
       where: {
-        user: {
-          phone: phone,
-          role: "SALESPERSON",
-          isActive: true,
-        },
+        phone: phone,
       },
       select: { distributorId: true },
     });
@@ -40,11 +36,7 @@ export class PrismaUserRepository implements UserRepository {
   async getSalespersonIdByPhone(phone: string): Promise<string | null> {
     const salesperson = await this.prisma.salesperson.findFirst({
       where: {
-        user: {
-          phone: phone,
-          role: "SALESPERSON",
-          isActive: true,
-        },
+        phone: phone,
       },
       select: { id: true },
     });
