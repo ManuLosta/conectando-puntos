@@ -118,7 +118,6 @@ async function main() {
   await prisma.superAdmin.create({
     data: {
       userId: superAdminUser.id,
-      permissions: ["ALL"],
     },
   });
 
@@ -163,7 +162,7 @@ async function main() {
       email: "vendedor1@distribuidoracentral.com",
       name: "Roberto López",
       phone: "+54 11 3456-7890",
-      role: "SALESPERSON",
+      role: "DISTRIBUTOR_ADMIN", // Using existing role
     },
   });
 
@@ -172,6 +171,7 @@ async function main() {
       userId: salesperson1User.id,
       distributorId: distributor1.id,
       territory: "Zona Norte",
+      phone: "+54 11 3456-7890",
     },
   });
 
@@ -180,7 +180,7 @@ async function main() {
       email: "vendedor2@distribuidoracentral.com",
       name: "María Fernández",
       phone: "+54 11 4567-8901",
-      role: "SALESPERSON",
+      role: "DISTRIBUTOR_ADMIN", // Using existing role
     },
   });
 
@@ -189,6 +189,7 @@ async function main() {
       userId: salesperson2User.id,
       distributorId: distributor1.id,
       territory: "Zona Sur",
+      phone: "+54 11 4567-8901",
     },
   });
 
@@ -197,7 +198,7 @@ async function main() {
       email: "vendedor1@lacteosdelsur.com",
       name: "Juan Martínez",
       phone: "+54 341 345-6789",
-      role: "SALESPERSON",
+      role: "DISTRIBUTOR_ADMIN", // Using existing role
     },
   });
 
@@ -206,6 +207,7 @@ async function main() {
       userId: salesperson3User.id,
       distributorId: distributor2.id,
       territory: "Centro",
+      phone: "+54 341 345-6789",
     },
   });
 
@@ -223,30 +225,35 @@ async function main() {
       email: "compras@donpepe.com",
       address: "Av. Belgrano 456",
       city: "Buenos Aires",
+      phone: "+54 11 1234-5678",
     },
     {
       name: "Almacén La Esquina",
       email: "pedidos@laesquina.com",
       address: "Rivadavia 789",
       city: "Buenos Aires",
+      phone: "+54 11 2345-6789",
     },
     {
       name: "MaxiKiosco Centro",
       email: "ventas@maxikiosco.com",
       address: "Córdoba 123",
       city: "Buenos Aires",
+      phone: "+54 11 3456-7890",
     },
     {
       name: "Mercadito del Barrio",
       email: "info@mercadito.com",
       address: "San Juan 456",
       city: "Rosario",
+      phone: "+54 341 123-4567",
     },
     {
       name: "Almacén San José",
       email: "contacto@sanjose.com",
       address: "Mitre 789",
       city: "Rosario",
+      phone: "+54 341 234-5678",
     },
   ];
 
@@ -256,7 +263,8 @@ async function main() {
       data: {
         email: clientData.email,
         name: clientData.name,
-        role: "FINAL_CLIENT",
+        phone: clientData.phone,
+        role: "DISTRIBUTOR_ADMIN", // Using existing role
       },
     });
 
@@ -265,6 +273,7 @@ async function main() {
         userId: clientUser.id,
         address: clientData.address,
         city: clientData.city,
+        phone: clientData.phone,
       },
     });
 
@@ -303,11 +312,16 @@ async function main() {
     });
   }
 
-  // Read and create products from CSV
+  // Read and create products from CSV for each distributor
   console.log("📦 Creating products from CSV...");
   const stockData = await readStockCSV();
-  const products: { product: Product; originalData: StockCSVItem }[] = [];
+  const products: {
+    product: Product;
+    originalData: StockCSVItem;
+    distributorId: string;
+  }[] = [];
 
+  // Create products for distributor 1
   for (const item of stockData) {
     const price = await generatePrice(item.descripcion);
 
@@ -316,48 +330,61 @@ async function main() {
         name: item.descripcion,
         sku: `SKU-${item.codigo.padStart(4, "0")}`,
         price: price,
+        distributorId: distributor1.id,
         isActive: !item.anulado,
         description: `Producto ${item.descripcion.toLowerCase()}`,
       },
     });
 
-    products.push({ product, originalData: item });
+    products.push({
+      product,
+      originalData: item,
+      distributorId: distributor1.id,
+    });
+  }
+
+  // Create products for distributor 2 (subset of products)
+  for (const item of stockData.slice(0, Math.floor(stockData.length * 0.7))) {
+    const price = await generatePrice(item.descripcion);
+
+    const product = await prisma.product.create({
+      data: {
+        name: item.descripcion,
+        sku: `SKU-${item.codigo.padStart(4, "0")}`,
+        price: price,
+        distributorId: distributor2.id,
+        isActive: !item.anulado,
+        description: `Producto ${item.descripcion.toLowerCase()}`,
+      },
+    });
+
+    products.push({
+      product,
+      originalData: item,
+      distributorId: distributor2.id,
+    });
   }
 
   console.log(`✅ Created ${products.length} products`);
 
-  // Create inventory items for distributor 1
-  console.log("📊 Creating inventory for Distribuidora Central...");
-  for (const { product, originalData } of products) {
+  // Create inventory items for all products
+  console.log("📊 Creating inventory items...");
+  for (const { product, originalData, distributorId } of products) {
     const stock = Math.max(0, originalData.cantidad); // Ensure positive stock
 
-    await prisma.inventoryItem.create({
-      data: {
-        productId: product.id,
-        distributorId: distributor1.id,
-        stock: stock,
-        minStock: Math.floor(stock * 0.2), // 20% of current stock as minimum
-        maxStock: Math.floor(stock * 2), // Double current stock as maximum
-      },
-    });
-  }
-
-  // Create inventory items for distributor 2 (with different stock levels)
-  console.log("📊 Creating inventory for Lácteos del Sur...");
-  for (const { product, originalData } of products.slice(
-    0,
-    Math.floor(products.length * 0.7),
-  )) {
-    const baseStock = Math.max(0, originalData.cantidad);
-    const stock = Math.floor(baseStock * (0.5 + Math.random())); // 50-150% of distributor 1's stock
+    // Generate lot number and expiration date
+    const lotNumber = `LOT-${product.sku}-${Date.now()}`;
+    const expirationDate = new Date();
+    expirationDate.setDate(
+      expirationDate.getDate() + Math.floor(Math.random() * 365) + 30,
+    ); // 30-395 days from now
 
     await prisma.inventoryItem.create({
       data: {
         productId: product.id,
-        distributorId: distributor2.id,
         stock: stock,
-        minStock: Math.floor(stock * 0.2),
-        maxStock: Math.floor(stock * 2),
+        lotNumber: lotNumber,
+        expirationDate: expirationDate,
       },
     });
   }
@@ -368,6 +395,7 @@ async function main() {
     {
       salespersonId: salesperson1.id,
       clientId: clients[0].id,
+      distributorId: distributor1.id,
       items: [
         { productIndex: 0, quantity: 2 },
         { productIndex: 1, quantity: 3 },
@@ -378,11 +406,22 @@ async function main() {
     {
       salespersonId: salesperson2.id,
       clientId: clients[1].id,
+      distributorId: distributor1.id,
       items: [
         { productIndex: 3, quantity: 1 },
         { productIndex: 4, quantity: 2 },
       ],
       status: "PENDING",
+    },
+    {
+      salespersonId: salesperson3.id,
+      clientId: clients[3].id,
+      distributorId: distributor2.id,
+      items: [
+        { productIndex: 0, quantity: 1 },
+        { productIndex: 1, quantity: 2 },
+      ],
+      status: "CONFIRMED",
     },
   ];
 
@@ -397,6 +436,7 @@ async function main() {
         orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         salespersonId: orderData.salespersonId,
         clientId: orderData.clientId,
+        distributorId: orderData.distributorId,
         total: total,
         status: orderData.status as
           | "PENDING"
@@ -440,9 +480,16 @@ async function main() {
   console.log("Super Admin: admin@sistema.com");
   console.log("Distributor 1 Admin: admin@distribuidoracentral.com");
   console.log("Distributor 2 Admin: admin@lacteosdelsur.com");
-  console.log("Salesperson 1: vendedor1@distribuidoracentral.com");
-  console.log("Salesperson 2: vendedor2@distribuidoracentral.com");
-  console.log("Salesperson 3: vendedor1@lacteosdelsur.com");
+
+  console.log("\n📞 TEST CONTACTS:");
+  console.log("Salesperson 1: +54 11 3456-7890 (Zona Norte)");
+  console.log("Salesperson 2: +54 11 4567-8901 (Zona Sur)");
+  console.log("Salesperson 3: +54 341 345-6789 (Centro)");
+  console.log("Client 1: +54 11 1234-5678 (Supermercado Don Pepe)");
+  console.log("Client 2: +54 11 2345-6789 (Almacén La Esquina)");
+  console.log("Client 3: +54 11 3456-7890 (MaxiKiosco Centro)");
+  console.log("Client 4: +54 341 123-4567 (Mercadito del Barrio)");
+  console.log("Client 5: +54 341 234-5678 (Almacén San José)");
 }
 
 main()

@@ -24,6 +24,7 @@ model Order {
   // Customer info
   clientId      String?
   salespersonId String?
+  distributorId String
 
   // Delivery info
   deliveryAddress String?
@@ -36,6 +37,7 @@ model Order {
   // Relationships
   client         FinalClient?  @relation(fields: [clientId], references: [id])
   salesperson    Salesperson?  @relation(fields: [salespersonId], references: [id])
+  distributor    Distributor   @relation(fields: [distributorId], references: [id])
   items          OrderItem[]
   stockMovements StockMovement[]
 

@@ -11,8 +11,9 @@ model Distributor {
   // Relationships
   administrators DistributorAdmin[]
   salespeople    Salesperson[]
-  inventoryItems InventoryItem[]
+  products       Product[]
   clients        ClientDistributor[]
+  orders         Order[]
 
   @@map("distributors")
 }
@@ -36,4 +37,34 @@ model ClientDistributor {
 
   @@unique([distributorId, clientId])
   @@map("client_distributors")
+}
+
+model Salesperson {
+  id           String @id @default(cuid())
+  userId       String @unique
+  distributorId String
+  territory    String?
+
+  phone        String?  @unique
+
+  // Relationships
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+  orders      Order[]
+
+  @@map("salespeople")
+}
+
+model FinalClient {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  phone      String? @unique
+  address    String?
+  city       String?
+  postalCode String?
+
+  // Relationships
+  orders            Order[]
+  distributorClients ClientDistributor[]
+
+  @@map("final_clients")
 }

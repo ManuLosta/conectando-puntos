@@ -1,8 +1,6 @@
 enum Role {
   SUPER_ADMIN
   DISTRIBUTOR_ADMIN
-  SALESPERSON
-  FINAL_CLIENT
 }
 
 model User {
@@ -16,9 +14,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  salesperson       Salesperson?
   distributorAdmin  DistributorAdmin?
-  finalClient       FinalClient?
   superAdmin        SuperAdmin?
 
   @@map("users")
@@ -28,8 +24,6 @@ model SuperAdmin {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  permissions String[] // JSON array of permissions
 
   @@map("super_admins")
 }
@@ -46,31 +40,3 @@ model DistributorAdmin {
   @@map("distributor_admins")
 }
 
-model Salesperson {
-  id           String @id @default(cuid())
-  userId       String @unique
-  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  distributorId String
-  territory    String?
-
-  // Relationships
-  distributor Distributor @relation(fields: [distributorId], references: [id])
-  orders      Order[]
-
-  @@map("salespeople")
-}
-
-model FinalClient {
-  id         String  @id @default(cuid())
-  userId     String  @unique
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  address    String?
-  city       String?
-  postalCode String?
-
-  // Relationships
-  orders            Order[]
-  distributorClients ClientDistributor[]
-
-  @@map("final_clients")
-}
