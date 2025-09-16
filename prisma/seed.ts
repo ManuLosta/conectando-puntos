@@ -171,7 +171,7 @@ async function main() {
       userId: salesperson1User.id,
       distributorId: distributor1.id,
       territory: "Zona Norte",
-      phone: "+54 11 3456-7890",
+      phone: "541133837591",
     },
   });
 
