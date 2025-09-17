@@ -6,20 +6,6 @@ import { customerService } from "@/services/customer.service";
 import { stockService } from "@/services/stock.service";
 // import { suggestionService } from "@/services/suggestion.service";
 
-export const consultarCatalogo = tool({
-  description:
-    "Consulta el catálogo completo de productos disponibles para la distribuidora del vendedor.",
-  inputSchema: z.object({}),
-  execute: async (_, { experimental_context }) => {
-    const { distributorId } = experimental_context as {
-      distributorId: string;
-      phoneNumber: string;
-      salespersonId: string;
-    };
-    return catalogService.getCatalogForDistributor(distributorId);
-  },
-});
-
 export const buscarProductos = tool({
   description:
     "Busca productos por palabra clave o SKU en el catálogo de la distribuidora.",
@@ -195,7 +181,6 @@ export const obtenerOrden = tool({
 });
 
 export const tools = {
-  consultarCatalogo,
   buscarProductos,
   consultarStock,
   crearOrden,

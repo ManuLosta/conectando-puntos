@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { WhatsAppMessage, WhatsAppWebhookBody } from "@/types/whatsapp";
 import { runAgent } from "@/services/agent.service";
 
@@ -104,34 +104,28 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch (err) {
     console.error("Invalid JSON body in webhook:", err);
-    // Always ack 200 so Meta doesn't retry aggressively
     return NextResponse.json(
       { status: "IGNORED_INVALID_BODY" },
       { status: 200 },
     );
   }
 
-  try {
-    console.log("WhatsApp webhook received");
+  // ACK inmediato
+  const ack = NextResponse.json({ status: "RECEIVED" });
 
-    const messages = extractMessages(body as WhatsAppWebhookBody);
+  // Trabajo post-respuesta garantizado por Next.js
+  after(async () => {
+    try {
+      const messages = extractMessages(body as WhatsAppWebhookBody);
+      for (const message of messages) {
+        await processTextMessage(message);
+      }
+    } catch (err) {
+      console.error("Async processing error:", err);
+    }
+  });
 
-    // Process asynchronously to return 200 immediately and avoid retries
-    Promise.resolve()
-      .then(async () => {
-        for (const message of messages) {
-          await processTextMessage(message);
-        }
-      })
-      .catch((err) => console.error("Async processing error:", err));
-
-    // Immediate ACK; do not block on processing
-    return NextResponse.json({ status: "RECEIVED" });
-  } catch (error) {
-    console.error("Error processing webhook:", error);
-    // Still return 200 to prevent duplicate retries; log for observability
-    return NextResponse.json({ status: "ERROR_LOGGED" }, { status: 200 });
-  }
+  return ack;
 }
 
 function extractMessages(body: WhatsAppWebhookBody): WhatsAppMessage[] {
