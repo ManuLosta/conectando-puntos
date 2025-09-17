@@ -8,6 +8,14 @@ export const suggestionService = {
     asOf: Date = new Date(),
     top: number,
   ): Promise<SuggestedProduct[]> {
+    // Ensure tenant isolation
+    if (!distributorId) {
+      throw new Error("DistributorId is required for suggestion operations");
+    }
+    if (!clientId) {
+      throw new Error("ClientId is required for suggestion operations");
+    }
+
     return await suggestionRepo.getSuggestedProducts(
       clientId,
       distributorId,

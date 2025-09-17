@@ -1,9 +1,10 @@
-import { catalogRepo, CatalogItem } from "@/repositories/catalog.repository";
+import { catalogRepo } from "@/repositories/catalog.repository";
 import {
   orderRepo,
   CreateOrderInput,
   OrderWithItems,
 } from "@/repositories/order.repository";
+import { CatalogItem } from "@/domain/catalog.dto";
 
 export interface CatalogService {
   getCatalogForDistributor(distributorId: string): Promise<CatalogItem[]>;

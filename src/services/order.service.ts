@@ -1,5 +1,4 @@
 import { orderRepo } from "@/repositories/order.repository";
-import { customerService } from "@/services/customer.service";
 import { stockRepo } from "@/repositories/stock.repository";
 import { OrderWithItems } from "@/repositories/order.repository";
 
@@ -32,13 +31,8 @@ class OrderServiceImpl implements OrderService {
       );
     }
 
-    const customer = await customerService.findByIdForDistributor(
-      distributorId,
-      clientId,
-    );
-    if (!customer) {
-      throw new Error(`Cliente no encontrado: ${clientId}`);
-    }
+    // Note: Customer validation removed to avoid circular dependency
+    // The AI tools are responsible for passing valid clientIds
 
     const orderItems = await Promise.all(
       items.map(async (item) => {

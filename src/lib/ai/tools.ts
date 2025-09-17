@@ -3,7 +3,7 @@ import { tool } from "ai";
 import { catalogService } from "@/services/catalog.service";
 import { orderService } from "@/services/order.service";
 import { customerService } from "@/services/customer.service";
-import { stockRepo } from "@/repositories/stock.repository";
+import { stockService } from "@/services/stock.service";
 import { suggestionService } from "@/services/suggestion.service";
 
 export const consultarCatalogo = tool({
@@ -50,7 +50,7 @@ export const consultarStock = tool({
       phoneNumber: string;
       salespersonId: string;
     };
-    return stockRepo.searchForDistributor(distributorId, query);
+    return stockService.searchForDistributor(distributorId, query);
   },
 });
 

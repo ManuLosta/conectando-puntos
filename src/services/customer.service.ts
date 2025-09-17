@@ -1,5 +1,5 @@
 import { customerRepo } from "@/repositories/customer.repository";
-import { Customer } from "@/domain/types";
+import { Customer, CustomerSearchResult } from "@/domain/customer.dto";
 
 export interface CustomerService {
   listForDistributor(distributorId: string): Promise<Customer[]>;

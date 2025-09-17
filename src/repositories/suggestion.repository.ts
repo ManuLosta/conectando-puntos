@@ -1,7 +1,5 @@
 import { SuggestedProduct } from "@/types/suggestedProduct";
 import { PrismaClient } from "@prisma/client";
-import * as fs from "fs";
-import * as path from "path";
 
 export interface SuggestionRepository {
   getSuggestedProducts(
