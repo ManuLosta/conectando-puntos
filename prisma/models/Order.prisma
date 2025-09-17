@@ -41,6 +41,9 @@ model Order {
   items          OrderItem[]
   stockMovements StockMovement[]
 
+  // Índices para optimización de queries
+  @@index([distributorId, createdAt])
+  @@index([clientId, distributorId, createdAt])
   @@map("orders")
 }
 
@@ -56,5 +59,7 @@ model OrderItem {
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
 
+  // Índice para optimización de queries por producto
+  @@index([productId])
   @@map("order_items")
 }
