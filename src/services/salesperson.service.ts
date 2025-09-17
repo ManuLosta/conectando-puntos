@@ -1,7 +1,4 @@
-import {
-  salespersonRepo,
-  PrismaSalespersonRepository,
-} from "@/repositories/salesperson.repository";
+import { PrismaSalespersonRepository } from "@/repositories/salesperson.repository";
 import { Salesperson } from "@/repositories/salesperson.repository";
 import { withTenant } from "@/lib/tenant-context";
 

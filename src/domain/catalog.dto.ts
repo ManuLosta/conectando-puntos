@@ -3,13 +3,11 @@
 export interface CatalogItem {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   sku: string;
   price: number;
-  distributorId: string;
+  stock: number;
   isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface ProductSearchResult {

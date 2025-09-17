@@ -13,11 +13,20 @@ class StockServiceImpl implements StockService {
     distributorId: string,
     query: string,
   ): Promise<StockSearchResult[]> {
-    // Ensure tenant isolation by always filtering by distributorId
     if (!distributorId) {
       throw new Error("DistributorId is required for stock operations");
     }
-    return stockRepo.searchForDistributor(distributorId, query);
+    const stockItems = await stockRepo.searchForDistributor(
+      distributorId,
+      query,
+    );
+    return stockItems.map((item) => ({
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      price: item.price,
+      availableStock: item.stock,
+    }));
   }
 }
 

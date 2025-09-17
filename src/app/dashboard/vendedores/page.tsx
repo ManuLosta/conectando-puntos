@@ -18,6 +18,8 @@ import { userService } from "@/services/user.service";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 async function VendorsData() {
   try {
     const session = await auth.api.getSession({
@@ -83,11 +85,6 @@ async function VendorsData() {
 }
 
 export default async function VendedoresPage() {
-  // Get user session to pass distributor context if needed
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">

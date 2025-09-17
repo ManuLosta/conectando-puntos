@@ -1,5 +1,6 @@
 import { orderRepo } from "@/repositories/order.repository";
 import { stockRepo } from "@/repositories/stock.repository";
+import { userRepo } from "@/repositories/user.repository";
 import { OrderWithItems } from "@/repositories/order.repository";
 
 export interface OrderService {
@@ -30,9 +31,6 @@ class OrderServiceImpl implements OrderService {
         `No se encontró distribuidora para el vendedor ${salespersonId}`,
       );
     }
-
-    // Note: Customer validation removed to avoid circular dependency
-    // The AI tools are responsible for passing valid clientIds
 
     const orderItems = await Promise.all(
       items.map(async (item) => {
