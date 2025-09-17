@@ -20,7 +20,6 @@ import { headers } from "next/headers";
 
 async function VendorsData() {
   try {
-    // Get user session to determine distributor ID
     const session = await auth.api.getSession({
       headers: await headers(),
     });
@@ -29,7 +28,6 @@ async function VendorsData() {
       throw new Error("No user session found");
     }
 
-    // Get distributor ID for the current user
     const distributorId = await userService.getDistributorIdForUser(
       session.user.id,
     );
@@ -38,32 +36,28 @@ async function VendorsData() {
       throw new Error("No distributor found for user");
     }
 
-    // Fetch real data from the database
-    const dbSalespeople =
-      await salespersonService.listForDistributor(distributorId);
+    const userInfo = await userService.getUserTenantInfo(session.user.id);
+    const isSuperadmin = userInfo?.role === "SUPER_ADMIN";
+
+    const dbSalespeople = await salespersonService.listForDistributor(
+      distributorId,
+      {
+        userId: session.user.id,
+        bypassRls: Boolean(isSuperadmin),
+      },
+    );
 
     // Transform database data to match the component interface
-    const vendors = await Promise.all(
-      dbSalespeople.map(async (salesperson) => {
-        // Get sales statistics for each salesperson
-        const stats = await salespersonService.getSalesStatsForDistributor(
-          distributorId,
-          salesperson.id,
-        );
-
-        return {
-          id: salesperson.id,
-          name: salesperson.name,
-          email: salesperson.email,
-          phone: salesperson.phone || `+54 11 5555-0000`,
-          lastSale:
-            stats.lastSaleDate || new Date().toISOString().split("T")[0],
-          totalSold: stats.totalSold,
-          status: true ? ("active" as const) : ("inactive" as const),
-          clientsCount: stats.clientsCount,
-        };
-      }),
-    );
+    const vendors = dbSalespeople.map((salesperson) => ({
+      id: salesperson.id,
+      name: salesperson.name,
+      email: salesperson.email,
+      phone: salesperson.phone || `+54 11 5555-0000`,
+      lastSale: new Date().toISOString().split("T")[0],
+      totalSold: 0,
+      status: "active" as const,
+      clientsCount: 0,
+    }));
 
     return <VendorsTable vendors={vendors} />;
   } catch (error) {

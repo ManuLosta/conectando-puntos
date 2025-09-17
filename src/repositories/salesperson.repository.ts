@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 export interface Salesperson {
   id: string;
@@ -18,7 +18,7 @@ export interface SalespersonRepository {
 }
 
 export class PrismaSalespersonRepository implements SalespersonRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient | Prisma.TransactionClient) {}
 
   async listForDistributor(distributorId: string): Promise<Salesperson[]> {
     const salespeople = await this.prisma.salesperson.findMany({
