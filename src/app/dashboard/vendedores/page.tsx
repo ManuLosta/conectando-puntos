@@ -59,9 +59,7 @@ async function VendorsData() {
           lastSale:
             stats.lastSaleDate || new Date().toISOString().split("T")[0],
           totalSold: stats.totalSold,
-          status: salesperson.isActive
-            ? ("active" as const)
-            : ("inactive" as const),
+          status: true ? ("active" as const) : ("inactive" as const),
           clientsCount: stats.clientsCount,
         };
       }),
