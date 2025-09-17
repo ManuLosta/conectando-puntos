@@ -3,11 +3,12 @@ import { orderRepo } from "@/repositories/order.repository";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     // Obtener el pedido completo con todos sus detalles
-    const order = await orderRepo.findById(params.id);
+    const { id } = await params;
+    const order = await orderRepo.findById(id);
 
     if (!order) {
       return NextResponse.json(

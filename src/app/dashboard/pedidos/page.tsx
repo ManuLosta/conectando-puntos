@@ -8,14 +8,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Package, Clock, Truck } from "lucide-react";
+import { Package, Clock, Truck } from "lucide-react";
 import { OrdersLoading } from "@/components/orders/orders-loading";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { orderService } from "@/services/order.service";
 import { OrderWithItems } from "@/repositories/order.repository";
 import { OrdersClient } from "@/components/orders/orders-client";
-import { Input } from "@/components/ui/input";
 import { userService } from "@/services/user.service";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";

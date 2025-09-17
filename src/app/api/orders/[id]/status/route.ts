@@ -3,10 +3,11 @@ import { orderRepo, OrderStatus } from "@/repositories/order.repository";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { status } = await request.json();
+    const { id } = await params;
 
     // Validar que el status sea válido
     const validStatuses: OrderStatus[] = [
@@ -21,7 +22,10 @@ export async function PUT(
     }
 
     // Actualizar el estado del pedido
-    const updatedOrder = await orderRepo.updateOrderStatus(params.id, status);
+    const updatedOrder = await orderRepo.updateOrderStatus(
+      id,
+      status as OrderStatus,
+    );
 
     if (!updatedOrder) {
       return NextResponse.json(
