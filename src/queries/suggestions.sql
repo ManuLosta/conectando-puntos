@@ -9,8 +9,9 @@ params AS (
     90                     AS new_days,
     14                     AS avoid_repeat_days,
     30                     AS min_expiry_days,
-    30                     AS top_global_limit,
-    30                     AS top_new_limit
+  30                     AS top_global_limit,
+  30                     AS top_new_limit,
+  :top::int              AS top
 ),
 -- 1) Ventanas de tiempo
 bounds AS (
@@ -143,4 +144,4 @@ ORDER BY
   (CASE WHEN n.product_id IS NOT NULL THEN 1 ELSE 0 END) DESC,
   COALESCE(gs.global_orders_cnt_1y,0)::int DESC,
   COALESCE(ci.client_qty_26w,0)::int DESC
-;
+LIMIT (SELECT top FROM params);

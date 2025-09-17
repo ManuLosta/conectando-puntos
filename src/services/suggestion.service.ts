@@ -6,7 +6,13 @@ export const suggestionService = {
     distributorId: string,
     clientId: string,
     asOf: Date = new Date(),
+    top: number,
   ): Promise<SuggestedProduct[]> {
-    return await userRepo.getSuggestedProducts(clientId, distributorId, asOf);
+    return await userRepo.getSuggestedProducts(
+      clientId,
+      distributorId,
+      asOf,
+      top,
+    );
   },
 };

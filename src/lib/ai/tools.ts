@@ -121,14 +121,18 @@ export const sugerirProductos = tool({
       .describe(
         "Fecha de referencia para las sugerencias (formato ISO string, ej: 2024-01-01T00:00:00Z)",
       ),
+    top: z
+      .optional(z.number().int().min(1).max(100).default(10))
+      .describe("Número máximo de productos a sugerir (por defecto 10)"),
   }),
-  execute: async ({ clientId, asOf }) => {
+  execute: async ({ clientId, asOf, top }) => {
     const distributorId = await getDistributorFromContext();
     const referenceDate = asOf ? new Date(asOf) : new Date();
     const suggestions = await suggestionService.suggestProducts(
       distributorId,
       clientId,
       referenceDate,
+      top ?? 10,
     );
     return suggestions;
   },
