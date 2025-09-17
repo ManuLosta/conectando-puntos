@@ -1,5 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 
+export type OrderStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "IN_PREPARATION"
+  | "DELIVERED"
+  | "CANCELLED";
+
 export interface OrderItemInput {
   productId: string;
   sku: string;
@@ -27,6 +34,14 @@ export interface OrderWithItems {
   deliveryAddress: string | null;
   notes: string | null;
   createdAt: Date;
+  client?: {
+    id: string;
+    name: string;
+  } | null;
+  salesperson?: {
+    id: string;
+    phone?: string | null;
+  } | null;
   items: Array<{
     id: string;
     productId: string;
@@ -44,6 +59,19 @@ export interface OrderRepository {
   createOrder(orderData: CreateOrderInput): Promise<OrderWithItems>;
   findById(id: string): Promise<OrderWithItems | null>;
   findByOrderNumber(orderNumber: string): Promise<OrderWithItems | null>;
+  findAllByDistributor(distributorId: string): Promise<OrderWithItems[]>;
+  findByDistributorAndStatus(
+    distributorId: string,
+    status: string,
+  ): Promise<OrderWithItems[]>;
+  updateOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+  ): Promise<OrderWithItems | null>;
+  bulkUpdateOrderStatus(
+    orderIds: string[],
+    status: OrderStatus,
+  ): Promise<{ success: boolean; count: number }>;
 }
 
 export class OrderRepositoryImpl implements OrderRepository {
@@ -207,6 +235,216 @@ export class OrderRepositoryImpl implements OrderRepository {
         },
       })),
     };
+  }
+
+  async findAllByDistributor(distributorId: string): Promise<OrderWithItems[]> {
+    const orders = await this.prisma.order.findMany({
+      where: { distributorId },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        salesperson: {
+          select: {
+            id: true,
+            phone: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                sku: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return orders.map((order) => ({
+      id: order.id,
+      distributorId: order.distributorId,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      total: Number(order.total),
+      clientId: order.clientId,
+      salespersonId: order.salespersonId,
+      deliveryAddress: order.deliveryAddress,
+      notes: order.notes,
+      createdAt: order.createdAt,
+      client: order.client,
+      salesperson: order.salesperson,
+      items: order.items?.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+        subtotal: Number(item.subtotal),
+        product: {
+          name: item.product.name,
+          sku: item.product.sku,
+        },
+      })),
+    }));
+  }
+
+  async findByDistributorAndStatus(
+    distributorId: string,
+    status: string,
+  ): Promise<OrderWithItems[]> {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        distributorId,
+        status: status as OrderStatus,
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        salesperson: {
+          select: {
+            id: true,
+            phone: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                sku: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return orders.map((order) => ({
+      id: order.id,
+      distributorId: order.distributorId,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      total: Number(order.total),
+      clientId: order.clientId,
+      salespersonId: order.salespersonId,
+      deliveryAddress: order.deliveryAddress,
+      notes: order.notes,
+      createdAt: order.createdAt,
+      client: order.client,
+      salesperson: order.salesperson,
+      items: order.items?.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+        subtotal: Number(item.subtotal),
+        product: {
+          name: item.product.name,
+          sku: item.product.sku,
+        },
+      })),
+    }));
+  }
+
+  async updateOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+  ): Promise<OrderWithItems | null> {
+    try {
+      const order = await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status },
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          salesperson: {
+            select: {
+              id: true,
+              phone: true,
+            },
+          },
+          items: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                  sku: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return {
+        id: order.id,
+        distributorId: order.distributorId,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        total: Number(order.total),
+        clientId: order.clientId,
+        salespersonId: order.salespersonId,
+        deliveryAddress: order.deliveryAddress,
+        notes: order.notes,
+        createdAt: order.createdAt,
+        client: order.client,
+        salesperson: order.salesperson,
+        items: order.items?.map((item) => ({
+          id: item.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: Number(item.price),
+          subtotal: Number(item.subtotal),
+          product: {
+            name: item.product.name,
+            sku: item.product.sku,
+          },
+        })),
+      };
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      return null;
+    }
+  }
+
+  async bulkUpdateOrderStatus(
+    orderIds: string[],
+    status: OrderStatus,
+  ): Promise<{ success: boolean; count: number }> {
+    try {
+      const result = await this.prisma.order.updateMany({
+        where: {
+          id: {
+            in: orderIds,
+          },
+        },
+        data: { status },
+      });
+
+      return { success: true, count: result.count };
+    } catch (error) {
+      console.error("Error in bulk update:", error);
+      return { success: false, count: 0 };
+    }
   }
 }
 
