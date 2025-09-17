@@ -78,10 +78,12 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.clientDistributor.deleteMany();
   await prisma.salesperson.deleteMany();
-  await prisma.distributorAdmin.deleteMany();
-  await prisma.superAdmin.deleteMany();
+  await prisma.userTenant.deleteMany();
   await prisma.finalClient.deleteMany();
   await prisma.distributor.deleteMany();
+  await prisma.verification.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.session.deleteMany();
   await prisma.user.deleteMany();
 
   // Create distributors
@@ -108,16 +110,46 @@ async function main() {
   console.log("👑 Creating super admin...");
   const superAdminUser = await prisma.user.create({
     data: {
+      id: "admin-user-1",
       email: "admin@sistema.com",
       name: "Administrador del Sistema",
-      phone: "+54 11 1234-5678",
+      emailVerified: true,
       role: "SUPER_ADMIN",
     },
   });
 
-  await prisma.superAdmin.create({
+  // Create test admin account for development
+  console.log("🧪 Creating test admin account...");
+  const testAdminUser = await prisma.user.create({
     data: {
-      userId: superAdminUser.id,
+      id: "test-admin-1",
+      email: "test@conectandopuntos.com",
+      name: "Admin de Prueba",
+      emailVerified: true,
+      role: "TENANT_USER",
+    },
+  });
+
+  // Add test admin to distributor 1 as admin
+  await prisma.userTenant.create({
+    data: {
+      userId: testAdminUser.id,
+      distributorId: distributor1.id,
+      role: "DISTRIBUTOR_ADMIN",
+    },
+  });
+
+  console.log("🔐 Creating Better Auth account...");
+  await prisma.account.create({
+    data: {
+      id: "test-account-1",
+      accountId: "test@conectandopuntos.com",
+      providerId: "credential",
+      userId: testAdminUser.id,
+      password:
+        "63bcb208ba848992e9101a08255017ab:3f63cd58f33234960984319678fb8927041cad25e19675193a2bc72b5f8b5480ffaf051bdf1cb13f6d03c4af35903a22fff6a327df42a7d1b28789791bf615e5",
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   });
 
@@ -125,33 +157,37 @@ async function main() {
   console.log("🏢 Creating distributor admins...");
   const admin1User = await prisma.user.create({
     data: {
+      id: "admin-user-2",
       email: "admin@distribuidoracentral.com",
       name: "Carlos Pérez",
-      phone: "+54 11 2345-6789",
-      role: "DISTRIBUTOR_ADMIN",
+      emailVerified: true,
+      role: "TENANT_USER",
     },
   });
 
-  await prisma.distributorAdmin.create({
+  await prisma.userTenant.create({
     data: {
       userId: admin1User.id,
       distributorId: distributor1.id,
+      role: "DISTRIBUTOR_ADMIN",
     },
   });
 
   const admin2User = await prisma.user.create({
     data: {
+      id: "admin-user-3",
       email: "admin@lacteosdelsur.com",
       name: "Ana García",
-      phone: "+54 11 2345-5678",
-      role: "DISTRIBUTOR_ADMIN",
+      emailVerified: true,
+      role: "TENANT_USER",
     },
   });
 
-  await prisma.distributorAdmin.create({
+  await prisma.userTenant.create({
     data: {
       userId: admin2User.id,
       distributorId: distributor2.id,
+      role: "DISTRIBUTOR_ADMIN",
     },
   });
 
@@ -159,10 +195,19 @@ async function main() {
   console.log("🤵 Creating salespeople...");
   const salesperson1User = await prisma.user.create({
     data: {
+      id: "salesperson-user-1",
       email: "vendedor1@distribuidoracentral.com",
       name: "Roberto López",
-      phone: "+54 11 3456-7890",
-      role: "DISTRIBUTOR_ADMIN", // Using existing role
+      emailVerified: true,
+      role: "TENANT_USER",
+    },
+  });
+
+  await prisma.userTenant.create({
+    data: {
+      userId: salesperson1User.id,
+      distributorId: distributor1.id,
+      role: "MEMBER",
     },
   });
 
@@ -177,10 +222,19 @@ async function main() {
 
   const salesperson2User = await prisma.user.create({
     data: {
+      id: "salesperson-user-2",
       email: "vendedor2@distribuidoracentral.com",
       name: "María Fernández",
-      phone: "+54 11 4567-8901",
-      role: "DISTRIBUTOR_ADMIN", // Using existing role
+      emailVerified: true,
+      role: "TENANT_USER",
+    },
+  });
+
+  await prisma.userTenant.create({
+    data: {
+      userId: salesperson2User.id,
+      distributorId: distributor1.id,
+      role: "MEMBER",
     },
   });
 
@@ -195,10 +249,19 @@ async function main() {
 
   const salesperson3User = await prisma.user.create({
     data: {
+      id: "salesperson-user-3",
       email: "vendedor1@lacteosdelsur.com",
       name: "Juan Martínez",
-      phone: "+54 341 345-6789",
-      role: "DISTRIBUTOR_ADMIN", // Using existing role
+      emailVerified: true,
+      role: "TENANT_USER",
+    },
+  });
+
+  await prisma.userTenant.create({
+    data: {
+      userId: salesperson3User.id,
+      distributorId: distributor2.id,
+      role: "MEMBER",
     },
   });
 
@@ -258,13 +321,15 @@ async function main() {
   ];
 
   const clients = [];
-  for (const clientData of clientsData) {
+  for (let i = 0; i < clientsData.length; i++) {
+    const clientData = clientsData[i];
     const clientUser = await prisma.user.create({
       data: {
+        id: `client-user-${i + 1}`,
         email: clientData.email,
         name: clientData.name,
-        phone: clientData.phone,
-        role: "DISTRIBUTOR_ADMIN", // Using existing role
+        emailVerified: true,
+        role: "TENANT_USER",
       },
     });
 
@@ -274,7 +339,7 @@ async function main() {
         name: clientData.name,
         address: clientData.address,
         city: clientData.city,
-        phone: clientData.phone,
+        phone: `+54 11 ${(1111 + i).toString().padStart(4, "0")}-${(1111 + i).toString().padStart(4, "0")}`,
       },
     });
 
@@ -478,19 +543,27 @@ async function main() {
   console.log(`• Orders: ${await prisma.order.count()}`);
 
   console.log("\n🔑 TEST USERS:");
-  console.log("Super Admin: admin@sistema.com");
+  console.log(
+    "Super Admin: admin@sistema.com (manages all tenants, not part of any tenant)",
+  );
+  console.log(
+    "Test Admin: test@conectandopuntos.com (password: password) - Admin of Distributor 1",
+  );
   console.log("Distributor 1 Admin: admin@distribuidoracentral.com");
   console.log("Distributor 2 Admin: admin@lacteosdelsur.com");
+  console.log("Salesperson 1: vendedor1@distribuidoracentral.com (Zona Norte)");
+  console.log("Salesperson 2: vendedor2@distribuidoracentral.com (Zona Sur)");
+  console.log("Salesperson 3: vendedor1@lacteosdelsur.com (Centro)");
 
   console.log("\n📞 TEST CONTACTS:");
-  console.log("Salesperson 1: +54 11 3456-7890 (Zona Norte)");
+  console.log("Salesperson 1: 541133837591 (Zona Norte)");
   console.log("Salesperson 2: +54 11 4567-8901 (Zona Sur)");
   console.log("Salesperson 3: +54 341 345-6789 (Centro)");
   console.log("Client 1: +54 11 1111-1111 (Supermercado Don Pepe)");
-  console.log("Client 2: +54 11 2222-2222 (Almacén La Esquina)");
-  console.log("Client 3: +54 11 3333-3333 (MaxiKiosco Centro)");
-  console.log("Client 4: +54 341 111-1111 (Mercadito del Barrio)");
-  console.log("Client 5: +54 341 222-2222 (Almacén San José)");
+  console.log("Client 2: +54 11 1112-1112 (Almacén La Esquina)");
+  console.log("Client 3: +54 11 1113-1113 (MaxiKiosco Centro)");
+  console.log("Client 4: +54 11 1114-1114 (Mercadito del Barrio)");
+  console.log("Client 5: +54 11 1115-1115 (Almacén San José)");
 }
 
 main()

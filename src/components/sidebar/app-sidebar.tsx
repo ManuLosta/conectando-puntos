@@ -35,15 +35,10 @@ const data = {
     logo: PackageIcon,
     plan: "Sistema de Gestión",
   },
-  user: {
-    name: "Usuario",
-    email: "usuario@conectandopuntos.com",
-    avatar: "/avatars/user.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
-      url: "/",
+      url: "/dashboard",
       icon: HomeIcon,
     },
     {
@@ -64,7 +59,16 @@ const data = {
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    image?: string | null;
+  };
+}
+
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" {...props} variant="inset">
       <SidebarHeader>
@@ -77,7 +81,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Agente de Ventas">
-                <Link href="/agent-playground">
+                <Link href="/dashboard/agent-playground">
                   <BotIcon />
                   <span>Agente de Ventas</span>
                 </Link>
@@ -86,9 +90,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
+      {user && (
+        <SidebarFooter>
+          <NavUser
+            user={{
+              name: user.name,
+              email: user.email,
+              avatar: user.image || "/avatars/user.jpg",
+            }}
+          />
+        </SidebarFooter>
+      )}
       <SidebarRail />
     </Sidebar>
   );
