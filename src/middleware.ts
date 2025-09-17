@@ -5,7 +5,7 @@ export async function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/", "/login"];
+  const publicRoutes = ["/", "/login", "/api/wa/webhook"];
   const isPublicRoute = publicRoutes.some(
     (route) =>
       request.nextUrl.pathname === route ||

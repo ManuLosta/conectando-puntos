@@ -1,4 +1,4 @@
-import { userRepo } from "@/repositories/user.repository";
+import { suggestionRepo } from "@/repositories/suggestion.repository";
 import { SuggestedProduct } from "@/types/suggestedProduct";
 
 export const suggestionService = {
@@ -8,7 +8,15 @@ export const suggestionService = {
     asOf: Date = new Date(),
     top: number,
   ): Promise<SuggestedProduct[]> {
-    return await userRepo.getSuggestedProducts(
+    // Ensure tenant isolation
+    if (!distributorId) {
+      throw new Error("DistributorId is required for suggestion operations");
+    }
+    if (!clientId) {
+      throw new Error("ClientId is required for suggestion operations");
+    }
+
+    return await suggestionRepo.getSuggestedProducts(
       clientId,
       distributorId,
       asOf,

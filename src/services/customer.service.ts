@@ -1,5 +1,5 @@
 import { customerRepo } from "@/repositories/customer.repository";
-import { Customer } from "@/domain/types";
+import { Customer } from "@/domain/customer.dto";
 
 export interface CustomerService {
   listForDistributor(distributorId: string): Promise<Customer[]>;
@@ -20,15 +20,24 @@ export interface CustomerService {
 
 class CustomerServiceImpl implements CustomerService {
   async listForDistributor(distributorId: string) {
-    return customerRepo.listForDistributor(distributorId);
+    const customers = await customerRepo.listForDistributor(distributorId);
+    return customers.map((customer) => ({ ...customer, distributorId }));
   }
 
   async findByNameForDistributor(distributorId: string, name: string) {
-    return customerRepo.findByNameForDistributor(distributorId, name);
+    const customer = await customerRepo.findByNameForDistributor(
+      distributorId,
+      name,
+    );
+    return customer ? { ...customer, distributorId } : null;
   }
 
   async findByIdForDistributor(distributorId: string, clientId: string) {
-    return customerRepo.findByIdForDistributor(distributorId, clientId);
+    const customer = await customerRepo.findByIdForDistributor(
+      distributorId,
+      clientId,
+    );
+    return customer ? { ...customer, distributorId } : null;
   }
 
   async existsForDistributor(distributorId: string, name: string) {
@@ -36,7 +45,11 @@ class CustomerServiceImpl implements CustomerService {
   }
 
   async searchForDistributor(distributorId: string, query: string) {
-    return customerRepo.searchForDistributor(distributorId, query);
+    const customers = await customerRepo.searchForDistributor(
+      distributorId,
+      query,
+    );
+    return customers.map((customer) => ({ ...customer, distributorId }));
   }
 }
 

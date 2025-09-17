@@ -3,28 +3,19 @@ import { tool } from "ai";
 import { catalogService } from "@/services/catalog.service";
 import { orderService } from "@/services/order.service";
 import { customerService } from "@/services/customer.service";
-import { stockRepo } from "@/repositories/stock.repository";
-import { userRepo } from "@/repositories/user.repository";
-import { phoneContext } from "@/lib/context/phone-context";
-import { suggestionService } from "@/services/suggestion.service";
-
-async function getDistributorFromContext(): Promise<string> {
-  const phone = phoneContext.requirePhoneNumber();
-  const distributorId = await userRepo.getSalespersonDistributorByPhone(phone);
-  if (!distributorId) {
-    throw new Error(
-      `No se encontró distribuidora para el vendedor con teléfono ${phone}`,
-    );
-  }
-  return distributorId;
-}
+import { stockService } from "@/services/stock.service";
+// import { suggestionService } from "@/services/suggestion.service";
 
 export const consultarCatalogo = tool({
   description:
     "Consulta el catálogo completo de productos disponibles para la distribuidora del vendedor.",
   inputSchema: z.object({}),
-  execute: async () => {
-    const distributorId = await getDistributorFromContext();
+  execute: async (_, { experimental_context }) => {
+    const { distributorId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
     return catalogService.getCatalogForDistributor(distributorId);
   },
 });
@@ -37,8 +28,12 @@ export const buscarProductos = tool({
       .string()
       .describe("Palabra clave para buscar productos por nombre o SKU"),
   }),
-  execute: async ({ keyword }) => {
-    const distributorId = await getDistributorFromContext();
+  execute: async ({ keyword }, { experimental_context }) => {
+    const { distributorId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
     return catalogService.searchProductsByKeyword(distributorId, keyword);
   },
 });
@@ -49,9 +44,13 @@ export const consultarStock = tool({
   inputSchema: z.object({
     query: z.string().describe("Texto de búsqueda para productos"),
   }),
-  execute: async ({ query }) => {
-    const distributorId = await getDistributorFromContext();
-    return stockRepo.searchForDistributor(distributorId, query);
+  execute: async ({ query }, { experimental_context }) => {
+    const { distributorId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
+    return stockService.searchForDistributor(distributorId, query);
   },
 });
 
@@ -79,14 +78,18 @@ export const crearOrden = tool({
       .describe("Dirección de entrega (opcional)"),
     notes: z.string().optional().describe("Notas adicionales (opcional)"),
   }),
-  execute: async ({ clientId, items, deliveryAddress, notes }) => {
-    const phone = phoneContext.requirePhoneNumber();
-    const salespersonId = await userRepo.getSalespersonIdByPhone(phone);
-    if (!salespersonId) {
-      throw new Error(`No se encontró vendedor con teléfono ${phone}`);
-    }
+  execute: async (
+    { clientId, items, deliveryAddress, notes },
+    { experimental_context },
+  ) => {
+    const { distributorId, salespersonId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
     return orderService.createOrderForSalesperson(
       salespersonId,
+      distributorId,
       clientId,
       items,
       deliveryAddress,
@@ -110,7 +113,7 @@ export const confirmarOrden = tool({
   },
 });
 
-export const sugerirProductos = tool({
+/*export const sugerirProductos = tool({
   description:
     "Sugiere productos para vender más: expiran pronto o habituales del cliente.",
   inputSchema: z.object({
@@ -125,8 +128,12 @@ export const sugerirProductos = tool({
       .optional(z.number().int().min(1).max(100).default(10))
       .describe("Número máximo de productos a sugerir (por defecto 10)"),
   }),
-  execute: async ({ clientId, asOf, top }) => {
-    const distributorId = await getDistributorFromContext();
+  execute: async ({ clientId, asOf, top }, { experimental_context }) => {
+    const { distributorId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
     const referenceDate = asOf ? new Date(asOf) : new Date();
     const suggestions = await suggestionService.suggestProducts(
       distributorId,
@@ -136,7 +143,7 @@ export const sugerirProductos = tool({
     );
     return suggestions;
   },
-});
+}); */
 
 export const listarClientes = tool({
   description: "Lista todos los clientes de la distribuidora del vendedor.",
@@ -146,8 +153,12 @@ export const listarClientes = tool({
       .optional()
       .describe("Filtro opcional de búsqueda por nombre"),
   }),
-  execute: async ({ query }) => {
-    const distributorId = await getDistributorFromContext();
+  execute: async ({ query }, { experimental_context }) => {
+    const { distributorId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
 
     if (query) {
       return customerService.searchForDistributor(distributorId, query);
@@ -163,8 +174,12 @@ export const buscarClientes = tool({
   inputSchema: z.object({
     query: z.string().describe("Texto de búsqueda para clientes"),
   }),
-  execute: async ({ query }) => {
-    const distributorId = await getDistributorFromContext();
+  execute: async ({ query }, { experimental_context }) => {
+    const { distributorId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
     return customerService.searchForDistributor(distributorId, query);
   },
 });
@@ -185,7 +200,7 @@ export const tools = {
   consultarStock,
   crearOrden,
   confirmarOrden,
-  sugerirProductos,
+  //  sugerirProductos,
   listarClientes,
   buscarClientes,
   obtenerOrden,

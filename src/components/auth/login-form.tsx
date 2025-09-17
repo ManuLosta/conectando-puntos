@@ -31,7 +31,7 @@ export function LoginForm({
     setError("");
 
     try {
-      const { data, error } = await authClient.signIn.email({
+      const { error } = await authClient.signIn.email({
         email,
         password,
       });
@@ -41,7 +41,7 @@ export function LoginForm({
       } else {
         router.push("/dashboard");
       }
-    } catch (err) {
+    } catch {
       setError("Ocurrió un error inesperado");
     } finally {
       setLoading(false);

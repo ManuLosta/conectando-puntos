@@ -9,12 +9,13 @@ model Distributor {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  userTenants    UserTenant[]
-  salespeople    Salesperson[]
-  products       Product[]
-  inventoryItems InventoryItem[]
-  clients        ClientDistributor[]
-  orders         Order[]
+  userTenants      UserTenant[]
+  salespeople      Salesperson[]
+  products         Product[]
+  inventoryItems   InventoryItem[]
+  clients          ClientDistributor[]
+  orders           Order[]
+  whatsappSessions WhatsAppSession[]
 
   @@map("distributors")
 }

@@ -1,8 +1,8 @@
 import { stepCountIs, generateText, ModelMessage } from "ai";
 import { chatModel } from "@/lib/ai/provider";
+import { whatsAppMessageService } from "@/services/whatsapp-message.service";
+import { userRepo } from "@/repositories/user.repository";
 import { tools } from "@/lib/ai/tools";
-import { phoneContext } from "@/lib/context/phone-context";
-import { requestContext } from "@/lib/context/request-context";
 
 const SYSTEM_PROMPT = `
 Eres un asistente de pedidos para vendedores de distribuidoras. Sé amable, colaborativo y usa 1–3 emojis cuando ayuden (sin exagerar). 😊🧾
@@ -31,7 +31,16 @@ Guías OBLIGATORIAS:
 IMPORTANTE: La función sugerirProductos debe llamarse INMEDIATAMENTE después de identificar cualquier cliente, sin excusas ni demoras.
 `;
 
-const sessionMessages = new Map<string, ModelMessage[]>();
+async function getDistributorFromPhone(phoneNumber: string): Promise<string> {
+  const distributorId =
+    await userRepo.getSalespersonDistributorByPhone(phoneNumber);
+  if (!distributorId) {
+    throw new Error(
+      `No se encontró distribuidora para el vendedor con teléfono ${phoneNumber}`,
+    );
+  }
+  return distributorId;
+}
 
 function isTextPart(p: unknown): p is { type: "text"; text: string } {
   return (
@@ -60,17 +69,6 @@ function extractTextContent(content: unknown): string {
   return "";
 }
 
-function sanitizeHistory(msgs: ModelMessage[]): ModelMessage[] {
-  const out: ModelMessage[] = [];
-  for (const m of msgs) {
-    if (m.role !== "user" && m.role !== "assistant") continue;
-    const text = extractTextContent(m.content as unknown);
-    if (!text) continue;
-    out.push({ role: m.role, content: text });
-  }
-  return out;
-}
-
 export async function runAgent({
   phoneNumber,
   userText,
@@ -83,65 +81,75 @@ export async function runAgent({
     throw new Error("Message too short or empty");
   }
 
-  // Set phone number in context for AI tools to access
-  phoneContext.setPhoneNumber(phoneNumber, phoneNumber);
+  try {
+    // Get distributor ID and salesperson info for this phone number
+    const distributorId = await getDistributorFromPhone(phoneNumber);
+    const salespersonId = await userRepo.getSalespersonIdByPhone(phoneNumber);
 
-  // Run the entire agent execution within request context
-  return requestContext.run(phoneNumber, async () => {
-    try {
-      const prior = sessionMessages.get(phoneNumber) ?? [];
-      if (prior.length === 0) {
-        setTimeout(
-          () => {
-            sessionMessages.delete(phoneNumber);
-          },
-          60 * 60 * 1000 * 6,
-        ); // 6h
-      }
-      const msgs = sanitizeHistory(prior);
-      msgs.push({ role: "user", content: trimmedText });
-
-      const { response } = await generateText({
-        model: chatModel,
-        system: SYSTEM_PROMPT,
-        messages: msgs,
-        tools,
-        stopWhen: stepCountIs(8),
-        onStepFinish: ({
-          text,
-          toolResults,
-          toolCalls,
-          finishReason,
-          usage,
-        }) => {
-          console.log("Step finished:", {
-            text: JSON.stringify(text),
-            toolResults: JSON.stringify(toolResults),
-            toolCalls: JSON.stringify(toolCalls),
-            finishReason: JSON.stringify(finishReason),
-            usage: JSON.stringify(usage),
-          });
-        },
-      });
-
-      const sessionArr = sanitizeHistory(
-        sessionMessages.get(phoneNumber) ?? [],
-      );
-      sessionArr.push({ role: "user", content: trimmedText });
-      const last = response.messages[response.messages.length - 1];
-      const assistantText = extractTextContent(last?.content as unknown) || "";
-      if (assistantText) {
-        sessionArr.push({ role: "assistant", content: assistantText });
-      }
-      if (sessionArr.length > 12) {
-        sessionArr.splice(0, sessionArr.length - 12);
-      }
-      sessionMessages.set(phoneNumber, sessionArr);
-
-      return assistantText || "Entendido.";
-    } finally {
-      // Clear phone number from context after processing
-      phoneContext.clearPhoneNumber(phoneNumber);
+    if (!salespersonId) {
+      throw new Error(`No se encontró vendedor con teléfono ${phoneNumber}`);
     }
-  });
+
+    // Get or create WhatsApp session for this phone and distributor
+    const session = await whatsAppMessageService.getOrCreateSession(
+      phoneNumber,
+      distributorId,
+    );
+
+    // Get conversation history from database
+    const historyMsgs = await whatsAppMessageService.getSessionHistory(
+      phoneNumber,
+      distributorId,
+    );
+
+    // Clean and prepare messages for AI model
+    const msgs: ModelMessage[] = historyMsgs.map((msg) => ({
+      role: msg.role as "user" | "assistant" | "system",
+      content: String(msg.content || ""),
+    }));
+
+    // Add the new user message
+    msgs.push({ role: "user", content: trimmedText });
+
+    const { response } = await generateText({
+      model: chatModel,
+      system: SYSTEM_PROMPT,
+      messages: msgs,
+      tools,
+      stopWhen: stepCountIs(8),
+      experimental_context: {
+        phoneNumber,
+        distributorId,
+        salespersonId,
+      },
+      onStepFinish: ({ text, toolResults, toolCalls, finishReason, usage }) => {
+        console.log("Step finished:", {
+          text: JSON.stringify(text),
+          toolResults: JSON.stringify(toolResults),
+          toolCalls: JSON.stringify(toolCalls),
+          finishReason: JSON.stringify(finishReason),
+          usage: JSON.stringify(usage),
+        });
+      },
+    });
+
+    // Extract assistant response
+    const last = response.messages[response.messages.length - 1];
+    const assistantText = extractTextContent(last?.content as unknown) || "";
+
+    // Save user message and assistant response to database
+    await whatsAppMessageService.addMessage(session.id, "user", trimmedText);
+    if (assistantText) {
+      await whatsAppMessageService.addMessage(
+        session.id,
+        "assistant",
+        assistantText,
+      );
+    }
+
+    return assistantText || "Entendido.";
+  } catch (error) {
+    console.error("Error in runAgent:", error);
+    throw error;
+  }
 }
