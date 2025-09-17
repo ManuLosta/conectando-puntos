@@ -6,6 +6,7 @@ import {
   ShoppingCartIcon,
   DollarSignIcon,
   UsersIcon,
+  UserCheckIcon,
   PackageIcon,
   BotIcon,
 } from "lucide-react";
@@ -56,10 +57,17 @@ const data = {
       url: "#",
       icon: DollarSignIcon,
     },
+  ],
+  navAdmin: [
     {
       title: "Clientes",
-      url: "#",
+      url: "/clientes",
       icon: UsersIcon,
+    },
+    {
+      title: "Vendedores",
+      url: "/vendedores",
+      icon: UserCheckIcon,
     },
   ],
 };
@@ -72,6 +80,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <SidebarGroup>
+          <SidebarGroupLabel>Administración</SidebarGroupLabel>
+          <SidebarMenu>
+            {data.navAdmin.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <Link href={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Labs</SidebarGroupLabel>
           <SidebarMenu>
