@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OrderItem {
   id: string;
@@ -171,7 +172,96 @@ export function OrderDetailModal({
   isOpen,
   onClose,
 }: OrderDetailModalProps) {
-  if (!order) return null;
+  if (!isOpen) return null;
+
+  // Si no hay order, mostrar skeleton de carga
+  if (!order) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-2xl font-semibold">
+                <Skeleton className="h-8 w-64" />
+              </DialogTitle>
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Skeletons para simular el contenido */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Información del Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Cliente</p>
+                    <Skeleton className="h-5 w-48 mt-1" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Vendedor</p>
+                    <Skeleton className="h-5 w-32 mt-1" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Fecha del Pedido
+                    </p>
+                    <Skeleton className="h-5 w-40 mt-1" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Estado del Pedido
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Estado</p>
+                    <Skeleton className="h-6 w-24 mt-1" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pago</p>
+                    <Skeleton className="h-6 w-20 mt-1" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total</p>
+                    <Skeleton className="h-8 w-32 mt-1" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Cargando productos...
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

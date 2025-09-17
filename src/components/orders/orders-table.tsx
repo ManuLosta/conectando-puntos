@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Copy, Check, Truck, X, CheckSquare, Square } from "lucide-react";
+import { Eye, Check, Truck, X, CheckSquare, Square } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -17,6 +17,7 @@ import { ConfirmationModal } from "./confirmation-modal";
 
 interface Order {
   id: string;
+  orderNumber?: string; // Agregar orderNumber opcional
   client: string;
   salesperson: string;
   date: string;
@@ -66,89 +67,60 @@ interface OrderDetail {
   }>;
 }
 
-// Función para generar datos mockeados completos del pedido
-function generateOrderDetail(order: Order): OrderDetail {
-  const mockItems = [
-    {
-      id: "1",
-      product: {
-        name: "Leche Entera La Serenísima",
-        sku: "LSE-001",
-        brand: "La Serenísima",
-      },
-      quantity: 24,
-      price: 450.0,
-      subtotal: 10800.0,
-    },
-    {
-      id: "2",
-      product: {
-        name: "Pan Lactal Bimbo",
-        sku: "BIM-002",
-        brand: "Bimbo",
-      },
-      quantity: 12,
-      price: 380.0,
-      subtotal: 4560.0,
-    },
-    {
-      id: "3",
-      product: {
-        name: "Queso Cremoso Sancor",
-        sku: "SAN-003",
-        brand: "Sancor",
-      },
-      quantity: 6,
-      price: 890.0,
-      subtotal: 5340.0,
-    },
-    {
-      id: "4",
-      product: {
-        name: "Jamón Cocido Paladini",
-        sku: "PAL-004",
-        brand: "Paladini",
-      },
-      quantity: 3,
-      price: 1200.0,
-      subtotal: 3600.0,
-    },
-    {
-      id: "5",
-      product: {
-        name: "Aceite Girasol Natura",
-        sku: "NAT-005",
-        brand: "Natura",
-      },
-      quantity: 8,
-      price: 520.0,
-      subtotal: 4160.0,
-    },
-  ];
+// Función para obtener los detalles reales del pedido desde la API
+const fetchOrderDetail = async (
+  orderId: string,
+): Promise<OrderDetail | null> => {
+  try {
+    const response = await fetch(`/api/orders/${orderId}`);
 
-  // Calcular total basado en los items o usar el amount del pedido
-  const calculatedTotal = mockItems.reduce(
-    (sum, item) => sum + item.subtotal,
-    0,
-  );
-  const finalTotal =
-    order.amount > calculatedTotal ? order.amount : calculatedTotal;
+    if (!response.ok) {
+      console.error(
+        "Error al obtener detalles del pedido:",
+        response.statusText,
+      );
+      return null;
+    }
 
-  return {
-    id: order.id,
-    orderNumber: order.id,
-    client: order.client,
-    salesperson: order.salesperson,
-    date: order.date,
-    status: order.status,
-    paymentStatus: "PENDING" as const,
-    amount: finalTotal,
-    deliveryAddress: `${order.client} - Av. Corrientes 1234, CABA, Buenos Aires`,
-    notes:
-      "Cliente preferencial. Entregar antes de las 10:00 AM. Verificar estado de productos perecederos.",
-    items: mockItems,
-  };
-}
+    const orderData = await response.json();
+
+    // Transformar los datos del repositorio al formato esperado por el modal
+    return {
+      id: orderData.id,
+      orderNumber: orderData.orderNumber,
+      client: orderData.client?.name || "Cliente no especificado",
+      salesperson: orderData.salesperson?.phone || "Vendedor no especificado",
+      date: orderData.createdAt,
+      status: orderData.status,
+      paymentStatus: "PENDING" as const, // Por ahora mantener como PENDING hasta implementar pagos
+      amount: orderData.total,
+      deliveryAddress: orderData.deliveryAddress || undefined,
+      notes: orderData.notes || undefined,
+      items: orderData.items.map(
+        (item: {
+          id: string;
+          product: { name: string; sku: string };
+          quantity: number;
+          price: number;
+          subtotal: number;
+        }) => ({
+          id: item.id,
+          product: {
+            name: item.product.name,
+            sku: item.product.sku,
+            brand: undefined, // Por ahora no tenemos marca en el modelo
+          },
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: item.subtotal,
+        }),
+      ),
+    };
+  } catch (error) {
+    console.error("Error al obtener detalles del pedido:", error);
+    return null;
+  }
+};
 
 function getStatusBadge(status: Order["status"]) {
   switch (status) {
@@ -226,10 +198,30 @@ export function OrdersTable({
     order: Order | null;
   }>({ isOpen: false, type: "confirm", order: null });
 
-  const handleViewOrder = (order: Order) => {
-    const orderDetail = generateOrderDetail(order);
-    setSelectedOrder(orderDetail);
+  const handleViewOrder = async (order: Order) => {
+    // Mostrar loading mientras se cargan los datos
+    setSelectedOrder(null);
     setIsModalOpen(true);
+
+    // Obtener los detalles reales del pedido
+    const orderDetail = await fetchOrderDetail(order.id);
+
+    if (orderDetail) {
+      setSelectedOrder(orderDetail);
+    } else {
+      // Si hay error, mostrar datos básicos como fallback
+      setSelectedOrder({
+        id: order.id,
+        orderNumber: order.orderNumber || order.id,
+        client: order.client,
+        salesperson: order.salesperson,
+        date: order.date,
+        status: order.status,
+        paymentStatus: "PENDING" as const,
+        amount: order.amount,
+        items: [],
+      });
+    }
   };
 
   const handleCloseModal = () => {
@@ -261,13 +253,58 @@ export function OrdersTable({
     });
   };
 
-  const handleConfirmAction = () => {
-    // Aquí iría la lógica para actualizar el estado del pedido
-    console.log(
-      `Acción ${confirmationModal.type} confirmada para pedido ${confirmationModal.order?.id}`,
-    );
-    setConfirmationModal({ isOpen: false, type: "confirm", order: null });
-    // TODO: Actualizar el estado del pedido en la base de datos
+  const handleConfirmAction = async () => {
+    if (!confirmationModal.order) return;
+
+    try {
+      // Determinar el nuevo estado basado en el tipo de acción
+      let newStatus: string;
+      switch (confirmationModal.type) {
+        case "confirm":
+          newStatus = "CONFIRMED";
+          break;
+        case "ship":
+          newStatus = "DELIVERED";
+          break;
+        case "cancel":
+          newStatus = "CANCELLED";
+          break;
+        default:
+          return;
+      }
+
+      // Llamar a la API para actualizar el estado
+      const response = await fetch(
+        `/api/orders/${confirmationModal.order.id}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: newStatus }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error al actualizar el pedido");
+      }
+
+      console.log(
+        `Pedido ${confirmationModal.order.id} actualizado exitosamente a estado ${newStatus}`,
+      );
+
+      // Cerrar el modal
+      setConfirmationModal({ isOpen: false, type: "confirm", order: null });
+
+      // Recargar la página para reflejar los cambios
+      window.location.reload();
+    } catch (error) {
+      console.error("Error al actualizar el pedido:", error);
+      alert(
+        `Error al actualizar el pedido: ${error instanceof Error ? error.message : "Error desconocido"}`,
+      );
+    }
   };
 
   const handleCloseConfirmation = () => {
@@ -286,16 +323,6 @@ export function OrdersTable({
         title="Ver pedido"
       >
         <Eye className="h-4 w-4" />
-      </Button>,
-      // Copiar - siempre disponible
-      <Button
-        key="copy"
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        title="Copiar pedido"
-      >
-        <Copy className="h-4 w-4" />
       </Button>,
     ];
 
@@ -418,7 +445,9 @@ export function OrdersTable({
                     </Button>
                   </TableCell>
                 )}
-                <TableCell className="font-medium">{order.id}</TableCell>
+                <TableCell className="font-medium">
+                  {order.orderNumber || order.id}
+                </TableCell>
                 <TableCell>{order.client}</TableCell>
                 <TableCell>{order.salesperson}</TableCell>
                 <TableCell>{formatDate(order.date)}</TableCell>

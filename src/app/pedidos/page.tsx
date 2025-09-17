@@ -22,6 +22,7 @@ const DISTRIBUTOR_ID = "cmfnah39n00004lrzw8f2ophr";
 
 interface ProcessedOrder {
   id: string;
+  orderNumber: string; // Agregar orderNumber para mostrar en la UI
   client: string;
   salesperson: string;
   date: string;
@@ -37,7 +38,8 @@ interface ProcessedOrder {
 // Función para transformar los datos del service al formato esperado por los componentes
 function transformOrderData(orders: OrderWithItems[]): ProcessedOrder[] {
   return orders.map((order) => ({
-    id: order.orderNumber,
+    id: order.id, // Usar el ID real de la base de datos
+    orderNumber: order.orderNumber, // Incluir el número de pedido para mostrar
     client: order.client?.name || "Cliente no especificado",
     salesperson: order.salesperson?.phone || "Vendedor no especificado",
     date: order.createdAt.toISOString(),

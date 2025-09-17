@@ -11,6 +11,7 @@ import { AlertTriangle, Check, Truck, X } from "lucide-react";
 
 interface Order {
   id: string;
+  orderNumber?: string; // Agregar orderNumber opcional
   client: string;
   salesperson: string;
   date: string;
@@ -116,7 +117,7 @@ export function ConfirmationModal({
           <div className="text-center space-y-2">
             <div className="bg-gray-50 rounded-lg p-3 space-y-1">
               <p className="text-sm text-gray-600">Pedido:</p>
-              <p className="font-semibold">{order.id}</p>
+              <p className="font-semibold">{order.orderNumber || order.id}</p>
               <p className="text-sm text-gray-600">Cliente:</p>
               <p className="font-medium">{order.client}</p>
               <p className="text-sm text-gray-600">Monto:</p>
