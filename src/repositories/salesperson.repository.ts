@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 export interface Salesperson {
   id: string;
@@ -7,7 +7,6 @@ export interface Salesperson {
   phone: string | null;
   territory: string | null;
   distributorId: string;
-  isActive: boolean;
 }
 
 export interface SalespersonRepository {
@@ -19,42 +18,46 @@ export interface SalespersonRepository {
 }
 
 export class PrismaSalespersonRepository implements SalespersonRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient | Prisma.TransactionClient) {}
 
   async listForDistributor(distributorId: string): Promise<Salesperson[]> {
     const salespeople = await this.prisma.salesperson.findMany({
       where: {
-        distributorId: distributorId,
+        distributorId,
       },
-      include: {
-        // Since Salesperson doesn't have a direct relation to User,
-        // we'll need to use raw query or create a separate query to get user data
+      select: {
+        id: true,
+        userId: true,
+        phone: true,
+        territory: true,
+        distributorId: true,
       },
     });
 
-    // For now, we'll need to fetch user data separately since there's no direct relation
-    const salespeopleWithUserData: Salesperson[] = [];
+    // Batch load users to avoid N+1 queries
+    const userIds = salespeople.map((s) => s.userId);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    });
+    const userById = new Map(users.map((u) => [u.id, u]));
 
-    for (const salesperson of salespeople) {
-      // This is a workaround since the Salesperson model has userId but no relation defined
-      const user = await this.prisma.user.findUnique({
-        where: { id: salesperson.userId },
-      });
-
-      if (user) {
-        salespeopleWithUserData.push({
-          id: salesperson.id,
+    const result: Salesperson[] = salespeople
+      .map((s) => {
+        const user = userById.get(s.userId);
+        if (!user) return null;
+        return {
+          id: s.id,
           name: user.name,
           email: user.email,
-          phone: salesperson.phone || user.phone,
-          territory: salesperson.territory,
-          distributorId: salesperson.distributorId,
-          isActive: user.isActive,
-        });
-      }
-    }
+          phone: s.phone,
+          territory: s.territory,
+          distributorId: s.distributorId,
+        } as Salesperson;
+      })
+      .filter(Boolean) as Salesperson[];
 
-    return salespeopleWithUserData;
+    return result;
   }
 
   async findByIdForDistributor(
@@ -64,7 +67,14 @@ export class PrismaSalespersonRepository implements SalespersonRepository {
     const salesperson = await this.prisma.salesperson.findFirst({
       where: {
         id: salespersonId,
-        distributorId: distributorId,
+        distributorId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        phone: true,
+        territory: true,
+        distributorId: true,
       },
     });
 
@@ -74,6 +84,7 @@ export class PrismaSalespersonRepository implements SalespersonRepository {
 
     const user = await this.prisma.user.findUnique({
       where: { id: salesperson.userId },
+      select: { id: true, name: true, email: true },
     });
 
     if (!user) {
@@ -84,10 +95,9 @@ export class PrismaSalespersonRepository implements SalespersonRepository {
       id: salesperson.id,
       name: user.name,
       email: user.email,
-      phone: salesperson.phone || user.phone,
+      phone: salesperson.phone,
       territory: salesperson.territory,
       distributorId: salesperson.distributorId,
-      isActive: user.isActive,
     };
   }
 }

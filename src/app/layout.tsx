@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Roboto } from "next/font/google";
 import "./globals.css";
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -29,10 +27,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${poppins.variable} ${roboto.variable} antialiased`}>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset>{children}</SidebarInset>
-        </SidebarProvider>
+        {children}
       </body>
     </html>
   );

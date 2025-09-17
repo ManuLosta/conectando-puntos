@@ -51,6 +51,8 @@ model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
   productId String
+  distributorId String
+
   quantity  Int
   price     Decimal @db.Decimal(10, 2)
   subtotal  Decimal @db.Decimal(10, 2)
@@ -60,6 +62,7 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id])
 
   // Índice para optimización de queries por producto
+  @@index([distributorId])
   @@index([productId])
   @@map("order_items")
 }

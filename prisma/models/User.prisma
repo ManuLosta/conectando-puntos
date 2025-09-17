@@ -1,42 +1,87 @@
-enum Role {
+enum UserRole {
   SUPER_ADMIN
-  DISTRIBUTOR_ADMIN
+  TENANT_USER
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  phone     String?  @unique
-  name      String
-  role      Role
-  isActive  Boolean  @default(true)
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          UserRole  @default(TENANT_USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  userTenants   UserTenant[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relationships
-  distributorAdmin  DistributorAdmin?
-  superAdmin        SuperAdmin?
-
-  @@map("users")
+  @@unique([token])
+  @@map("session")
 }
 
-model SuperAdmin {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  @@map("super_admins")
+  @@map("account")
 }
 
-model DistributorAdmin {
-  id           String @id @default(cuid())
-  userId       String @unique
-  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+enum TenantRole {
+  SUPERADMIN
+  DISTRIBUTOR_ADMIN
+  MEMBER
+}
+
+
+model UserTenant {
+  id            String     @id @default(cuid())
+  userId        String
   distributorId String
+  role          TenantRole @default(MEMBER)
+  createdAt     DateTime   @default(now())
 
-  // Relationships
-  distributor Distributor @relation(fields: [distributorId], references: [id])
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  distributor Distributor  @relation(fields: [distributorId], references: [id], onDelete: Cascade)
 
-  @@map("distributor_admins")
+  @@unique([userId, distributorId])
+  @@map("user_tenant")
 }
-

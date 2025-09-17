@@ -9,9 +9,10 @@ model Distributor {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  administrators DistributorAdmin[]
+  userTenants    UserTenant[]
   salespeople    Salesperson[]
   products       Product[]
+  inventoryItems InventoryItem[]
   clients        ClientDistributor[]
   orders         Order[]
 
