@@ -7,101 +7,149 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Plus, Package } from "lucide-react";
-import { OrdersTable } from "@/components/orders/orders-table";
+import { Package, Clock, Truck } from "lucide-react";
 import { OrdersLoading } from "@/components/orders/orders-loading";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { orderService } from "@/services/order.service";
+import { OrderWithItems } from "@/repositories/order.repository";
+import { OrdersClient } from "@/components/orders/orders-client";
+import { userService } from "@/services/user.service";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
-async function OrdersData() {
-  // Mock data con todos los estados del enum OrderStatus
-  const orders = [
-    {
-      id: "#1245",
-      client: "Supermercado La Abundancia",
-      salesperson: "Juan Pérez",
-      date: "2024-01-15",
-      status: "PENDING" as const,
-      amount: 1250.0,
-    },
-    {
-      id: "#1246",
-      client: "Almacén Don Pepe",
-      salesperson: "Ana Gómez",
-      date: "2024-01-15",
-      status: "PENDING" as const,
-      amount: 340.5,
-    },
-    {
-      id: "#1249",
-      client: "Mercado Central",
-      salesperson: "Carlos López",
-      date: "2024-01-15",
-      status: "CONFIRMED" as const,
-      amount: 2100.0,
-    },
-    {
-      id: "#1242",
-      client: "Mercado Chino El Dragón",
-      salesperson: "Ana Gómez",
-      date: "2024-01-14",
-      status: "CONFIRMED" as const,
-      amount: 5800.0,
-    },
-    {
-      id: "#1248",
-      client: "Supermercado Norte",
-      salesperson: "Juan Pérez",
-      date: "2024-01-14",
-      status: "IN_PREPARATION" as const,
-      amount: 3200.0,
-    },
-    {
-      id: "#1247",
-      client: "Minimarket El Barrio",
-      salesperson: "María Silva",
-      date: "2024-01-14",
-      status: "IN_PREPARATION" as const,
-      amount: 1890.25,
-    },
-    {
-      id: "#1240",
-      client: "Supermercado Vea Centro",
-      salesperson: "María Silva",
-      date: "2024-01-13",
-      status: "DELIVERED" as const,
-      amount: 8150.75,
-    },
-    {
-      id: "#1241",
-      client: "Almacén La Esquina",
-      salesperson: "Carlos López",
-      date: "2024-01-13",
-      status: "DELIVERED" as const,
-      amount: 950.0,
-    },
-    {
-      id: "#1243",
-      client: "Kiosco San Martín",
-      salesperson: "Juan Pérez",
-      date: "2024-01-12",
-      status: "CANCELLED" as const,
-      amount: 750.0,
-    },
-  ];
-
-  return <OrdersTable orders={orders} />;
+interface ProcessedOrder {
+  id: string;
+  orderNumber: string; // Agregar orderNumber para mostrar en la UI
+  client: string;
+  salesperson: string;
+  date: string;
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "IN_PREPARATION"
+    | "DELIVERED"
+    | "CANCELLED";
+  amount: number;
 }
 
-export default function PedidosPage() {
+// Función para transformar los datos del service al formato esperado por los componentes
+function transformOrderData(orders: OrderWithItems[]): ProcessedOrder[] {
+  return orders.map((order) => ({
+    id: order.id, // Usar el ID real de la base de datos
+    orderNumber: order.orderNumber, // Incluir el número de pedido para mostrar
+    client: order.client?.name || "Cliente no especificado",
+    salesperson: order.salesperson?.phone || "Vendedor no especificado",
+    date: order.createdAt.toISOString(),
+    status: order.status as ProcessedOrder["status"],
+    amount: order.total,
+  }));
+}
+
+async function getOrdersData() {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user?.id) {
+      throw new Error("No user session found");
+    }
+
+    const distributorId = await userService.getDistributorIdForUser(
+      session.user.id,
+    );
+
+    if (!distributorId) {
+      throw new Error("No distributor found for user");
+    }
+
+    // Obtener todos los pedidos de la distribuidora
+    const allOrders =
+      await orderService.getAllOrdersByDistributor(distributorId);
+
+    // Obtener pedidos por estado específico
+    const pendingOrders = await orderService.getOrdersByDistributorAndStatus(
+      distributorId,
+      "PENDING",
+    );
+    const confirmedOrders = await orderService.getOrdersByDistributorAndStatus(
+      distributorId,
+      "CONFIRMED",
+    );
+    const inPreparationOrders =
+      await orderService.getOrdersByDistributorAndStatus(
+        distributorId,
+        "IN_PREPARATION",
+      );
+
+    // Combinar pedidos confirmados y en preparación para "por enviar"
+    const ordersToShip = [...confirmedOrders, ...inPreparationOrders];
+
+    return {
+      allOrders: transformOrderData(allOrders),
+      pendingOrders: transformOrderData(pendingOrders),
+      ordersToShip: transformOrderData(ordersToShip),
+    };
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return {
+      allOrders: [],
+      pendingOrders: [],
+      ordersToShip: [],
+    };
+  }
+}
+
+function OrdersSection({
+  orders,
+  title,
+  icon: Icon,
+  description,
+  emptyMessage,
+  showBulkActions = false,
+}: {
+  orders: ProcessedOrder[];
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  emptyMessage: string;
+  showBulkActions?: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Icon className="h-5 w-5" />
+            {title}
+            <Badge variant="secondary" className="ml-2">
+              {orders.length}
+            </Badge>
+          </div>
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </CardHeader>
+      <CardContent>
+        {orders.length > 0 ? (
+          <Suspense fallback={<OrdersLoading />}>
+            <OrdersClient orders={orders} showBulkActions={showBulkActions} />
+          </Suspense>
+        ) : (
+          <div className="text-center py-8">
+            <Icon className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">{emptyMessage}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default async function PedidosPage() {
+  const { allOrders, pendingOrders, ordersToShip } = await getOrdersData();
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
@@ -118,77 +166,66 @@ export default function PedidosPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="flex flex-1  mt-2 flex-col gap-4 p-4 pt-0">
         <div className="flex flex-col gap-4">
-          {/* Header with title and actions */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold">Gestión de Pedidos</h1>
-              <p className="text-muted-foreground">
-                Administra y realiza seguimiento de todos los pedidos de tus
-                clientes
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Pedido
-              </Button>
-            </div>
-          </div>
+          {/* Tabs para las 3 zonas */}
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="all" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Todos los pedidos
+                <Badge variant="secondary" className="ml-1">
+                  {allOrders.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Por confirmar
+                <Badge variant="secondary" className="ml-1">
+                  {pendingOrders.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="to-ship" className="flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Por enviar
+                <Badge variant="secondary" className="ml-1">
+                  {ordersToShip.length}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filtros y Búsqueda</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4 items-center">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por cliente, número de pedido..."
-                    className="pl-10"
-                  />
-                </div>
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Todos los estados" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los estados</SelectItem>
-                    <SelectItem value="pending">
-                      Pendiente a confirmar
-                    </SelectItem>
-                    <SelectItem value="confirmed">Confirmado</SelectItem>
-                    <SelectItem value="in_preparation">
-                      En preparación
-                    </SelectItem>
-                    <SelectItem value="delivered">Enviado</SelectItem>
-                    <SelectItem value="cancelled">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+            <TabsContent value="all" className="space-y-4">
+              <OrdersSection
+                orders={allOrders}
+                title="Todos los Pedidos"
+                icon={Package}
+                description="Vista completa de todos los pedidos del sistema"
+                emptyMessage="No hay pedidos registrados"
+              />
+            </TabsContent>
 
-          {/* Orders List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Lista de Pedidos
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Gestiona todos los pedidos de tus clientes
-              </p>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<OrdersLoading />}>
-                <OrdersData />
-              </Suspense>
-            </CardContent>
-          </Card>
+            <TabsContent value="pending" className="space-y-4">
+              <OrdersSection
+                orders={pendingOrders}
+                title="Pedidos por Confirmar"
+                icon={Clock}
+                description="Pedidos pendientes que necesitan confirmación"
+                emptyMessage="No hay pedidos pendientes de confirmar"
+                showBulkActions={true}
+              />
+            </TabsContent>
+
+            <TabsContent value="to-ship" className="space-y-4">
+              <OrdersSection
+                orders={ordersToShip}
+                title="Pedidos por Enviar"
+                icon={Truck}
+                description="Pedidos confirmados y en preparación listos para envío"
+                emptyMessage="No hay pedidos listos para enviar"
+                showBulkActions={true}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </>

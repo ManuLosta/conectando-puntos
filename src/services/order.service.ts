@@ -1,4 +1,4 @@
-import { orderRepo } from "@/repositories/order.repository";
+import { orderRepo, OrderStatus } from "@/repositories/order.repository";
 import { stockRepo } from "@/repositories/stock.repository";
 import { userRepo } from "@/repositories/user.repository";
 import { OrderWithItems } from "@/repositories/order.repository";
@@ -15,6 +15,16 @@ export interface OrderService {
   confirmOrder(orderId: string): Promise<OrderWithItems | null>;
   getOrderById(orderId: string): Promise<OrderWithItems | null>;
   getOrderByNumber(orderNumber: string): Promise<OrderWithItems | null>;
+  getAllOrdersByDistributor(distributorId: string): Promise<OrderWithItems[]>;
+  getOrdersByDistributorAndStatus(
+    distributorId: string,
+    status: OrderStatus,
+  ): Promise<OrderWithItems[]>;
+  updateOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+  ): Promise<OrderWithItems | null>;
+  bulkUpdateOrderStatus(orderIds: string[], status: OrderStatus): Promise<void>;
 }
 
 class OrderServiceImpl implements OrderService {
@@ -98,6 +108,28 @@ class OrderServiceImpl implements OrderService {
 
   async getOrderByNumber(orderNumber: string) {
     return orderRepo.findByOrderNumber(orderNumber);
+  }
+
+  async getAllOrdersByDistributor(distributorId: string) {
+    return orderRepo.findAllByDistributor(distributorId);
+  }
+
+  async getOrdersByDistributorAndStatus(
+    distributorId: string,
+    status: OrderStatus,
+  ) {
+    return orderRepo.findByDistributorAndStatus(distributorId, status);
+  }
+
+  async updateOrderStatus(orderId: string, status: OrderStatus) {
+    return orderRepo.updateOrderStatus(orderId, status);
+  }
+
+  async bulkUpdateOrderStatus(orderIds: string[], status: OrderStatus) {
+    // Actualizar múltiples pedidos de una vez
+    await Promise.all(
+      orderIds.map((orderId) => orderRepo.updateOrderStatus(orderId, status)),
+    );
   }
 }
 
