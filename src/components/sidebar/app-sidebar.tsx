@@ -48,7 +48,7 @@ const data = {
     },
     {
       title: "Pedidos",
-      url: "#",
+      url: "/pedidos",
       icon: ShoppingCartIcon,
     },
     {
