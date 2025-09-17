@@ -51,6 +51,7 @@ export class PrismaUserRepository implements UserRepository {
     clientId: string,
     distributorId: string,
     asOf: Date,
+    top: number,
   ): Promise<SuggestedProduct[]> {
     // Leer el archivo SQL
     const sqlPath = path.join(
@@ -65,7 +66,8 @@ export class PrismaUserRepository implements UserRepository {
     const processedQuery = sqlQuery
       .replace(/:client_id::text/g, `'${clientId}'::text`)
       .replace(/:distributor_id::text/g, `'${distributorId}'::text`)
-      .replace(/:as_of::timestamptz/g, `'${asOf.toISOString()}'::timestamptz`);
+      .replace(/:as_of::timestamptz/g, `'${asOf.toISOString()}'::timestamptz`)
+      .replace(/:top::int/g, `${top}`);
 
     const results =
       await this.prisma.$queryRawUnsafe<SuggestedProduct[]>(processedQuery);
