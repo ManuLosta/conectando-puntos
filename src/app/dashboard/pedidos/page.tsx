@@ -16,9 +16,9 @@ import { orderService } from "@/services/order.service";
 import { OrderWithItems } from "@/repositories/order.repository";
 import { OrdersClient } from "@/components/orders/orders-client";
 import { Input } from "@/components/ui/input";
-
-// Usar el ID de distribuidora proporcionado
-const DISTRIBUTOR_ID = "cmfnah39n00004lrzw8f2ophr";
+import { userService } from "@/services/user.service";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
 interface ProcessedOrder {
   id: string;
@@ -50,22 +50,38 @@ function transformOrderData(orders: OrderWithItems[]): ProcessedOrder[] {
 
 async function getOrdersData() {
   try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user?.id) {
+      throw new Error("No user session found");
+    }
+
+    const distributorId = await userService.getDistributorIdForUser(
+      session.user.id,
+    );
+
+    if (!distributorId) {
+      throw new Error("No distributor found for user");
+    }
+
     // Obtener todos los pedidos de la distribuidora
     const allOrders =
-      await orderService.getAllOrdersByDistributor(DISTRIBUTOR_ID);
+      await orderService.getAllOrdersByDistributor(distributorId);
 
     // Obtener pedidos por estado específico
     const pendingOrders = await orderService.getOrdersByDistributorAndStatus(
-      DISTRIBUTOR_ID,
+      distributorId,
       "PENDING",
     );
     const confirmedOrders = await orderService.getOrdersByDistributorAndStatus(
-      DISTRIBUTOR_ID,
+      distributorId,
       "CONFIRMED",
     );
     const inPreparationOrders =
       await orderService.getOrdersByDistributorAndStatus(
-        DISTRIBUTOR_ID,
+        distributorId,
         "IN_PREPARATION",
       );
 
