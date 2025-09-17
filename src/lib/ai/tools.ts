@@ -115,31 +115,26 @@ export const sugerirProductos = tool({
     "Sugiere productos para vender más: expiran pronto o habituales del cliente.",
   inputSchema: z.object({
     clientId: z.string().describe("ID del cliente para sugerencias"),
-    topN: z
-      .number()
-      .int()
-      .positive()
-      .max(10)
+    asOf: z
+      .string()
       .optional()
-      .describe("Cantidad máxima de sugerencias (default 3–5)"),
+      .describe(
+        "Fecha de referencia para las sugerencias (formato ISO string, ej: 2024-01-01T00:00:00Z)",
+      ),
+    top: z
+      .optional(z.number().int().min(1).max(100).default(10))
+      .describe("Número máximo de productos a sugerir (por defecto 10)"),
   }),
-  execute: async ({ clientId, topN }) => {
+  execute: async ({ clientId, asOf, top }) => {
     const distributorId = await getDistributorFromContext();
+    const referenceDate = asOf ? new Date(asOf) : new Date();
     const suggestions = await suggestionService.suggestProducts(
       distributorId,
       clientId,
-      topN ?? 5,
+      referenceDate,
+      top ?? 10,
     );
-    // Return a concise list the model can present
-    return suggestions.map((s) => ({
-      sku: s.sku,
-      name: s.name,
-      reason: s.reason,
-      suggestedQty: s.suggestedQty,
-      price: s.price,
-      qtyAvailable: s.qtyAvailable,
-      expiryDays: s.expiryDays,
-    }));
+    return suggestions;
   },
 });
 

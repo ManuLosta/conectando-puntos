@@ -1,4 +1,9 @@
-import { PrismaClient, Product } from "@prisma/client";
+import {
+  PrismaClient,
+  Product,
+  OrderStatus,
+  PaymentStatus,
+} from "@prisma/client";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -64,6 +69,23 @@ async function generatePrice(productName: string): Promise<number> {
 
   // Default price range
   return Math.floor(Math.random() * 1000) + 300;
+}
+
+// Generate order notes helper function
+function generateOrderNotes(clientName: string, itemsCount: number): string {
+  const notes = [
+    `Pedido regular de ${clientName}`,
+    `Entrega urgente solicitada`,
+    `Cliente prefiere entrega temprana`,
+    `Revisar stock antes de confirmar`,
+    `Pedido especial con ${itemsCount} productos`,
+    `Entrega coordinada con cliente`,
+    `Verificar calidad de productos lácteos`,
+    `Cliente solicita factura tipo A`,
+    `Entrega en horario comercial únicamente`,
+    `Pedido recurrente mensual`,
+  ];
+  return notes[Math.floor(Math.random() * notes.length)];
 }
 
 async function main() {
@@ -435,7 +457,7 @@ async function main() {
 
   // Create inventory items for all products
   console.log("📊 Creating inventory items...");
-  for (const { product, originalData, distributorId } of products) {
+  for (const { product, originalData } of products) {
     const stock = Math.max(0, originalData.cantidad); // Ensure positive stock
 
     // Generate lot number and expiration date
@@ -455,81 +477,192 @@ async function main() {
     });
   }
 
-  // Create some sample orders
-  console.log("📋 Creating sample orders...");
-  const sampleOrders = [
-    {
-      salespersonId: salesperson1.id,
-      clientId: clients[0].id,
-      distributorId: distributor1.id,
-      items: [
-        { productIndex: 0, quantity: 2 },
-        { productIndex: 1, quantity: 3 },
-        { productIndex: 2, quantity: 1 },
-      ],
-      status: "CONFIRMED",
-    },
-    {
-      salespersonId: salesperson2.id,
-      clientId: clients[1].id,
-      distributorId: distributor1.id,
-      items: [
-        { productIndex: 3, quantity: 1 },
-        { productIndex: 4, quantity: 2 },
-      ],
-      status: "PENDING",
-    },
-    {
-      salespersonId: salesperson3.id,
-      clientId: clients[3].id,
-      distributorId: distributor2.id,
-      items: [
-        { productIndex: 0, quantity: 1 },
-        { productIndex: 1, quantity: 2 },
-      ],
-      status: "CONFIRMED",
-    },
-  ];
+  // Create realistic orders with historical data
+  console.log("📋 Creating realistic historical orders...");
 
-  for (const orderData of sampleOrders) {
-    const total = orderData.items.reduce((sum, item) => {
-      const product = products[item.productIndex].product;
-      return sum + Number(product.price) * item.quantity;
-    }, 0);
+  // Generate orders for the last 6 months
+  const ordersToCreate = 150; // Generate 150 orders
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - 6); // 6 months ago
 
+  console.log(
+    `📊 Generating ${ordersToCreate} orders from ${startDate.toLocaleDateString()} to ${new Date().toLocaleDateString()}`,
+  );
+
+  for (let i = 0; i < ordersToCreate; i++) {
+    // Random date between start date and now
+    const randomDate = new Date(
+      startDate.getTime() + Math.random() * (Date.now() - startDate.getTime()),
+    );
+
+    // Select random distributor and get its products and clients
+    const isDistributor1 = Math.random() > 0.4; // 60% distributor1, 40% distributor2
+    const selectedDistributor = isDistributor1 ? distributor1 : distributor2;
+    const distributorProducts = products.filter(
+      (p) => p.distributorId === selectedDistributor.id,
+    );
+    const distributorClients = isDistributor1
+      ? clients.slice(0, 3)
+      : clients.slice(3, 5);
+    const distributorSalespeople = isDistributor1
+      ? [salesperson1, salesperson2]
+      : [salesperson3];
+
+    if (distributorProducts.length === 0 || distributorClients.length === 0)
+      continue;
+
+    // Random client and salesperson
+    const selectedClient =
+      distributorClients[Math.floor(Math.random() * distributorClients.length)];
+    const selectedSalesperson =
+      distributorSalespeople[
+        Math.floor(Math.random() * distributorSalespeople.length)
+      ];
+
+    // Generate order items (1-8 products per order)
+    const numItems = Math.floor(Math.random() * 8) + 1;
+    const orderItems: { productId: string; quantity: number; price: number }[] =
+      [];
+    const usedProducts = new Set<string>();
+
+    for (let j = 0; j < numItems; j++) {
+      let selectedProduct;
+      let attempts = 0;
+
+      // Try to select a unique product for this order
+      do {
+        selectedProduct =
+          distributorProducts[
+            Math.floor(Math.random() * distributorProducts.length)
+          ];
+        attempts++;
+      } while (usedProducts.has(selectedProduct.product.id) && attempts < 10);
+
+      if (usedProducts.has(selectedProduct.product.id)) continue;
+
+      usedProducts.add(selectedProduct.product.id);
+
+      // Generate realistic quantities based on product type
+      let quantity = 1;
+      const productName = selectedProduct.product.name.toLowerCase();
+
+      if (productName.includes("queso")) {
+        if (productName.includes("kg") || productName.includes("kilo")) {
+          quantity = Math.floor(Math.random() * 5) + 1; // 1-5 kg
+        } else {
+          quantity = Math.floor(Math.random() * 12) + 2; // 2-13 units
+        }
+      } else if (productName.includes("yogur") || productName.includes("yog")) {
+        quantity = Math.floor(Math.random() * 24) + 6; // 6-29 units (high volume)
+      } else if (productName.includes("crema")) {
+        quantity = Math.floor(Math.random() * 8) + 2; // 2-9 units
+      } else {
+        quantity = Math.floor(Math.random() * 10) + 1; // 1-10 units default
+      }
+
+      orderItems.push({
+        productId: selectedProduct.product.id,
+        quantity: quantity,
+        price: Number(selectedProduct.product.price),
+      });
+    }
+
+    if (orderItems.length === 0) continue;
+
+    const total = orderItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+
+    // Realistic status distribution based on order age
+    const daysSinceOrder = Math.floor(
+      (Date.now() - randomDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    let status: OrderStatus;
+    let paymentStatus: PaymentStatus;
+
+    if (daysSinceOrder > 30) {
+      // Old orders are mostly delivered or cancelled
+      status =
+        Math.random() > 0.1 ? OrderStatus.DELIVERED : OrderStatus.CANCELLED;
+      paymentStatus =
+        status === OrderStatus.DELIVERED
+          ? Math.random() > 0.2
+            ? PaymentStatus.PAID
+            : PaymentStatus.PARTIAL
+          : PaymentStatus.REJECTED;
+    } else if (daysSinceOrder > 7) {
+      // Recent orders have mixed status
+      const rand = Math.random();
+      if (rand > 0.7) status = OrderStatus.DELIVERED;
+      else if (rand > 0.5) status = OrderStatus.IN_TRANSIT;
+      else if (rand > 0.3) status = OrderStatus.IN_PREPARATION;
+      else if (rand > 0.1) status = OrderStatus.CONFIRMED;
+      else status = OrderStatus.CANCELLED;
+
+      paymentStatus =
+        status === OrderStatus.DELIVERED
+          ? PaymentStatus.PAID
+          : status === OrderStatus.CANCELLED
+            ? PaymentStatus.REJECTED
+            : Math.random() > 0.6
+              ? PaymentStatus.PAID
+              : PaymentStatus.PENDING;
+    } else {
+      // Very recent orders are mostly pending or confirmed
+      status =
+        Math.random() > 0.3 ? OrderStatus.PENDING : OrderStatus.CONFIRMED;
+      paymentStatus = PaymentStatus.PENDING;
+    }
+
+    // Create the order
     const order = await prisma.order.create({
       data: {
-        orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        salespersonId: orderData.salespersonId,
-        clientId: orderData.clientId,
-        distributorId: orderData.distributorId,
+        orderNumber: `ORD-${randomDate.getFullYear()}${String(randomDate.getMonth() + 1).padStart(2, "0")}${String(randomDate.getDate()).padStart(2, "0")}-${String(i + 1).padStart(4, "0")}`,
+        salespersonId: selectedSalesperson.id,
+        clientId: selectedClient.id,
+        distributorId: selectedDistributor.id,
         total: total,
-        status: orderData.status as
-          | "PENDING"
-          | "CONFIRMED"
-          | "IN_PREPARATION"
-          | "IN_TRANSIT"
-          | "DELIVERED"
-          | "CANCELLED",
-        deliveryAddress: "Dirección de entrega de ejemplo",
-        notes: "Orden de ejemplo generada por seed",
+        status: status,
+        paymentStatus: paymentStatus,
+        deliveryAddress: selectedClient.address,
+        deliveryDate:
+          status === OrderStatus.DELIVERED
+            ? new Date(
+                randomDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000,
+              )
+            : null,
+        notes: generateOrderNotes(selectedClient.name, orderItems.length),
+        createdAt: randomDate,
+        updatedAt:
+          status === OrderStatus.DELIVERED || status === OrderStatus.CANCELLED
+            ? new Date(
+                randomDate.getTime() + Math.random() * 14 * 24 * 60 * 60 * 1000,
+              )
+            : randomDate,
       },
     });
 
     // Create order items
-    for (const item of orderData.items) {
-      const product = products[item.productIndex].product;
+    for (const item of orderItems) {
       await prisma.orderItem.create({
         data: {
           orderId: order.id,
-          productId: product.id,
+          productId: item.productId,
           quantity: item.quantity,
-          price: product.price,
-          subtotal: Number(product.price) * item.quantity,
+          price: item.price,
+          subtotal: item.price * item.quantity,
         },
       });
     }
+
+    // Log progress every 25 orders
+    if ((i + 1) % 25 === 0) {
+      console.log(`  ✅ Created ${i + 1}/${ordersToCreate} orders...`);
+    }
   }
+
+  console.log("✅ Historical orders creation completed!");
 
   console.log("🎉 Database seed completed successfully!");
 
