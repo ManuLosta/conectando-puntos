@@ -1,8 +1,7 @@
 import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
 import { chatModel } from "@/lib/ai/provider";
+import { userRepo } from "@/repositories/user.repository";
 import { tools } from "@/lib/ai/tools";
-import { phoneContext } from "@/lib/context/phone-context";
-import { requestContext } from "@/lib/context/request-context";
 
 export const maxDuration = 30;
 
@@ -39,14 +38,33 @@ export async function POST(req: Request) {
 
   const phoneNumber = phone || "541133837591";
 
-  return await requestContext.run(phoneNumber, async () => {
-    phoneContext.setPhoneNumber(phoneNumber, phoneNumber);
+  try {
+    // Get distributor ID and salesperson info for this phone number
+    const distributorId =
+      await userRepo.getSalespersonDistributorByPhone(phoneNumber);
+    const salespersonId = await userRepo.getSalespersonIdByPhone(phoneNumber);
+
+    if (!distributorId) {
+      throw new Error(
+        `No se encontró distribuidora para el teléfono ${phoneNumber}`,
+      );
+    }
+
+    if (!salespersonId) {
+      throw new Error(`No se encontró vendedor con teléfono ${phoneNumber}`);
+    }
+
     const result = streamText({
       model: chatModel,
       messages: convertToModelMessages(messages),
       tools,
       system: SYSTEM_PROMPT,
       stopWhen: stepCountIs(8),
+      experimental_context: {
+        phoneNumber,
+        distributorId,
+        salespersonId,
+      },
       onStepFinish: ({ text, toolResults, toolCalls, finishReason, usage }) => {
         console.log("Step finished:", {
           text: JSON.stringify(text),
@@ -59,5 +77,11 @@ export async function POST(req: Request) {
     });
 
     return result.toUIMessageStreamResponse();
-  });
+  } catch (error) {
+    console.error("Error in chat API:", error);
+    return new Response(JSON.stringify({ error: "Error processing request" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

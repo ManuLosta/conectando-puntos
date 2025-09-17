@@ -4,7 +4,6 @@ import {
   CreateOrderInput,
   OrderWithItems,
 } from "@/repositories/order.repository";
-import { userRepo } from "@/repositories/user.repository";
 
 export interface CatalogService {
   getCatalogForDistributor(distributorId: string): Promise<CatalogItem[]>;
@@ -12,7 +11,10 @@ export interface CatalogService {
     distributorId: string,
     keyword: string,
   ): Promise<CatalogItem[]>;
-  createOrder(orderData: CreateOrderInput): Promise<OrderWithItems>;
+  createOrder(
+    distributorId: string,
+    orderData: CreateOrderInput,
+  ): Promise<OrderWithItems>;
   findProductsBySkus(
     distributorId: string,
     skus: string[],
@@ -46,14 +48,13 @@ class CatalogServiceImpl implements CatalogService {
     return catalogRepo.getProductsBySkus(distributorId, skus);
   }
 
-  async createOrder(orderData: CreateOrderInput): Promise<OrderWithItems> {
+  async createOrder(
+    distributorId: string,
+    orderData: CreateOrderInput,
+  ): Promise<OrderWithItems> {
     if (orderData.items.length === 0) {
       throw new Error("La orden debe tener al menos un producto");
     }
-
-    const distributorId = await this.getDistributorIdFromSalesperson(
-      orderData.salespersonId,
-    );
 
     const productSkus = orderData.items.map((item) => item.sku);
     const availableProducts = await catalogRepo.getProductsBySkus(
@@ -88,19 +89,6 @@ class CatalogServiceImpl implements CatalogService {
     };
 
     return orderRepo.createOrder(validatedOrderData);
-  }
-
-  private async getDistributorIdFromSalesperson(
-    salespersonId: string,
-  ): Promise<string> {
-    const distributorId =
-      await userRepo.getSalespersonDistributor(salespersonId);
-    if (!distributorId) {
-      throw new Error(
-        `No se encontró distribuidora para el vendedor ${salespersonId}`,
-      );
-    }
-    return distributorId;
   }
 }
 

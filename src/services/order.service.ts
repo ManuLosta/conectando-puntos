@@ -1,12 +1,12 @@
 import { orderRepo } from "@/repositories/order.repository";
 import { customerService } from "@/services/customer.service";
 import { stockRepo } from "@/repositories/stock.repository";
-import { userRepo } from "@/repositories/user.repository";
 import { OrderWithItems } from "@/repositories/order.repository";
 
 export interface OrderService {
   createOrderForSalesperson(
     salespersonId: string,
+    distributorId: string,
     clientId: string,
     items: { sku: string; quantity: number }[],
     deliveryAddress?: string,
@@ -20,13 +20,12 @@ export interface OrderService {
 class OrderServiceImpl implements OrderService {
   async createOrderForSalesperson(
     salespersonId: string,
+    distributorId: string,
     clientId: string,
     items: { sku: string; quantity: number }[],
     deliveryAddress?: string,
     notes?: string,
   ) {
-    const distributorId =
-      await userRepo.getSalespersonDistributor(salespersonId);
     if (!distributorId) {
       throw new Error(
         `No se encontró distribuidora para el vendedor ${salespersonId}`,
