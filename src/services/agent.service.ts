@@ -1,31 +1,46 @@
 import { stepCountIs, generateText, ModelMessage } from "ai";
 import { chatModel } from "@/lib/ai/provider";
+import { whatsAppMessageService } from "@/services/whatsapp-message.service";
+import { userRepo } from "@/repositories/user.repository";
 import { tools } from "@/lib/ai/tools";
-import { phoneContext } from "@/lib/context/phone-context";
-import { requestContext } from "@/lib/context/request-context";
 
 const SYSTEM_PROMPT = `
 Eres un asistente de pedidos para vendedores de distribuidoras. Sé amable, colaborativo y usa 1–3 emojis cuando ayuden (sin exagerar). 😊🧾
 
 Entrada típica: "Cliente: items". Ej.: "Supermercado Don Pepe: 10 kg queso la serenisima".
 
-Flujo:
-1) Valida el CLIENTE: llamá a listarClientes (podés filtrar por el nombre). Si no existe, informá claramente: "No encontré el cliente <nombre>." y sugerí los más parecidos.
-2) Identificá productos y cantidades y consultá stock de TODOS con consultarStock.
-3) Si hay datos suficientes, creá ORDEN BORRADOR con crearOrden (o equivalente en herramientas).
-4) ANTES de cerrar el resumen del borrador, RECOMENDÁ POSITIVAMENTE entre 1–3 productos adicionales con sugerirProductos para ayudar a vender más (beneficia la comisión del vendedor y las ventas de la distribuidora). Indicá motivo breve ("expira pronto"/"habitual"), cantidad sugerida y precio.
-5) Respondé con un resumen amigable, por ejemplo:
-"🧾 Pedido a <cliente>\n- <cantidad> × <producto> (<sku>) — stock: <disp>\n➕ Sugerencias: <n> ítems (ej.: <sku> <nombre> × <qty> — $<precio>)\n💰 Total estimado: $<total>\n🆔 Orden borrador: <orderId>\n¿Querés confirmarlo? (sí/no)"
-6) Si el usuario confirma ("sí", "ok", "confirmar"), llamá a confirmarOrden y reportá: "✅ Pedido confirmado: <orderId>". Incluí el detalle por ítem en líneas: "- <cantidad> × <producto> = $<lineTotal>" y el total final.
+Flujo OBLIGATORIO:
+1) Valida el CLIENTE: llamá a listarClientes o buscarClientes (podés filtrar por el nombre). Si no existe, informá claramente: "No encontré el cliente <nombre>." y sugerí los más parecidos.
+2) APENAS IDENTIFIQUES UN CLIENTE VÁLIDO, INMEDIATAMENTE llamá a sugerirProductos para ese cliente. Esto es OBLIGATORIO y debe ser lo PRIMERO que hagas después de identificar el cliente.
+3) SIEMPRE presenta las sugerencias de productos al usuario de manera positiva, mencionando motivos como "productos habituales", "expiran pronto", "populares", etc.
+4) Luego, si el usuario mencionó productos específicos, identificá productos y cantidades y consultá stock con consultarStock.
+5) Si hay datos suficientes, creá ORDEN BORRADOR con crearOrden.
+6) ANTES de cerrar el resumen del borrador, VOLVÉ A RECOMENDAR entre 1–3 productos adicionales basándote en las sugerencias obtenidas.
+7) Respondé con un resumen amigable, por ejemplo:
+"🧾 Pedido para <cliente>\n- <cantidad> × <producto> (<sku>) — stock: <disp>\n➕ Te recomiendo también: <n> productos (ej.: <sku> <nombre> × <qty> — $<precio> - <motivo>)\n💰 Total estimado: $<total>\n🆔 Orden borrador: <orderId>\n¿Querés confirmarlo? (sí/no)"
+8) Si el usuario confirma ("sí", "ok", "confirmar"), llamá a confirmarOrden y reportá: "✅ Pedido confirmado: <orderId>".
 
-Guías:
-- La recomendación NO es opcional: siempre ofrecé 1–3 productos positivos si hay stock.
-- Si faltan datos (cliente o cantidades), pedí lo mínimo con tono colaborativo y agregá ejemplos cortos.
-- No inventes SKUs; si no encontrás el producto, ofrecé alternativas del stock.
+Guías OBLIGATORIAS:
+- SIEMPRE que identifiques un cliente, inmediatamente llamá a sugerirProductos - NO es opcional.
+- Las recomendaciones deben ser POSITIVAS y ÚTILES, no opcionales.
+- Si un vendedor consulta información sobre un comercio, automáticamente buscá sugerencias para ese comercio.
+- Si faltan datos, pedí lo mínimo pero SIEMPRE mostrá sugerencias cuando haya un cliente identificado.
+- No inventes SKUs; usá solo los datos reales del stock.
 - Mantené respuestas breves, claras y con 1–3 emojis máximo.
+
+IMPORTANTE: La función sugerirProductos debe llamarse INMEDIATAMENTE después de identificar cualquier cliente, sin excusas ni demoras.
 `;
 
-const sessionMessages = new Map<string, ModelMessage[]>();
+async function getDistributorFromPhone(phoneNumber: string): Promise<string> {
+  const distributorId =
+    await userRepo.getSalespersonDistributorByPhone(phoneNumber);
+  if (!distributorId) {
+    throw new Error(
+      `No se encontró distribuidora para el vendedor con teléfono ${phoneNumber}`,
+    );
+  }
+  return distributorId;
+}
 
 function isTextPart(p: unknown): p is { type: "text"; text: string } {
   return (
@@ -54,17 +69,6 @@ function extractTextContent(content: unknown): string {
   return "";
 }
 
-function sanitizeHistory(msgs: ModelMessage[]): ModelMessage[] {
-  const out: ModelMessage[] = [];
-  for (const m of msgs) {
-    if (m.role !== "user" && m.role !== "assistant") continue;
-    const text = extractTextContent(m.content as unknown);
-    if (!text) continue;
-    out.push({ role: m.role, content: text });
-  }
-  return out;
-}
-
 export async function runAgent({
   phoneNumber,
   userText,
@@ -77,65 +81,75 @@ export async function runAgent({
     throw new Error("Message too short or empty");
   }
 
-  // Set phone number in context for AI tools to access
-  phoneContext.setPhoneNumber(phoneNumber, phoneNumber);
+  try {
+    // Get distributor ID and salesperson info for this phone number
+    const distributorId = await getDistributorFromPhone(phoneNumber);
+    const salespersonId = await userRepo.getSalespersonIdByPhone(phoneNumber);
 
-  // Run the entire agent execution within request context
-  return requestContext.run(phoneNumber, async () => {
-    try {
-      const prior = sessionMessages.get(phoneNumber) ?? [];
-      if (prior.length === 0) {
-        setTimeout(
-          () => {
-            sessionMessages.delete(phoneNumber);
-          },
-          60 * 60 * 1000 * 6,
-        ); // 6h
-      }
-      const msgs = sanitizeHistory(prior);
-      msgs.push({ role: "user", content: trimmedText });
-
-      const { response } = await generateText({
-        model: chatModel,
-        system: SYSTEM_PROMPT,
-        messages: msgs,
-        tools,
-        stopWhen: stepCountIs(8),
-        onStepFinish: ({
-          text,
-          toolResults,
-          toolCalls,
-          finishReason,
-          usage,
-        }) => {
-          console.log("Step finished:", {
-            text: JSON.stringify(text),
-            toolResults: JSON.stringify(toolResults),
-            toolCalls: JSON.stringify(toolCalls),
-            finishReason: JSON.stringify(finishReason),
-            usage: JSON.stringify(usage),
-          });
-        },
-      });
-
-      const sessionArr = sanitizeHistory(
-        sessionMessages.get(phoneNumber) ?? [],
-      );
-      sessionArr.push({ role: "user", content: trimmedText });
-      const last = response.messages[response.messages.length - 1];
-      const assistantText = extractTextContent(last?.content as unknown) || "";
-      if (assistantText) {
-        sessionArr.push({ role: "assistant", content: assistantText });
-      }
-      if (sessionArr.length > 12) {
-        sessionArr.splice(0, sessionArr.length - 12);
-      }
-      sessionMessages.set(phoneNumber, sessionArr);
-
-      return assistantText || "Entendido.";
-    } finally {
-      // Clear phone number from context after processing
-      phoneContext.clearPhoneNumber(phoneNumber);
+    if (!salespersonId) {
+      throw new Error(`No se encontró vendedor con teléfono ${phoneNumber}`);
     }
-  });
+
+    // Get or create WhatsApp session for this phone and distributor
+    const session = await whatsAppMessageService.getOrCreateSession(
+      phoneNumber,
+      distributorId,
+    );
+
+    // Get conversation history from database
+    const historyMsgs = await whatsAppMessageService.getSessionHistory(
+      phoneNumber,
+      distributorId,
+    );
+
+    // Clean and prepare messages for AI model
+    const msgs: ModelMessage[] = historyMsgs.map((msg) => ({
+      role: msg.role as "user" | "assistant" | "system",
+      content: String(msg.content || ""),
+    }));
+
+    // Add the new user message
+    msgs.push({ role: "user", content: trimmedText });
+
+    const { response } = await generateText({
+      model: chatModel,
+      system: SYSTEM_PROMPT,
+      messages: msgs,
+      tools,
+      stopWhen: stepCountIs(8),
+      experimental_context: {
+        phoneNumber,
+        distributorId,
+        salespersonId,
+      },
+      onStepFinish: ({ text, toolResults, toolCalls, finishReason, usage }) => {
+        console.log("Step finished:", {
+          text: JSON.stringify(text),
+          toolResults: JSON.stringify(toolResults),
+          toolCalls: JSON.stringify(toolCalls),
+          finishReason: JSON.stringify(finishReason),
+          usage: JSON.stringify(usage),
+        });
+      },
+    });
+
+    // Extract assistant response
+    const last = response.messages[response.messages.length - 1];
+    const assistantText = extractTextContent(last?.content as unknown) || "";
+
+    // Save user message and assistant response to database
+    await whatsAppMessageService.addMessage(session.id, "user", trimmedText);
+    if (assistantText) {
+      await whatsAppMessageService.addMessage(
+        session.id,
+        "assistant",
+        assistantText,
+      );
+    }
+
+    return assistantText || "Entendido.";
+  } catch (error) {
+    console.error("Error in runAgent:", error);
+    throw error;
+  }
 }

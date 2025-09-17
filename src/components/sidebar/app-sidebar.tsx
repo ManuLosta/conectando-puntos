@@ -6,6 +6,7 @@ import {
   ShoppingCartIcon,
   DollarSignIcon,
   UsersIcon,
+  UserCheckIcon,
   PackageIcon,
   BotIcon,
 } from "lucide-react";
@@ -35,36 +36,47 @@ const data = {
     logo: PackageIcon,
     plan: "Sistema de Gestión",
   },
-  user: {
-    name: "Usuario",
-    email: "usuario@conectandopuntos.com",
-    avatar: "/avatars/user.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
-      url: "/",
+      url: "/dashboard",
       icon: HomeIcon,
     },
     {
       title: "Pedidos",
-      url: "/pedidos",
+      url: "/dashboard/pedidos",
       icon: ShoppingCartIcon,
     },
     {
       title: "Cobranzas",
-      url: "#",
+      url: "/dashboard/cobranzas",
       icon: DollarSignIcon,
     },
+  ],
+  navAdmin: [
     {
       title: "Clientes",
-      url: "#",
+      url: "/dashboard/clientes",
       icon: UsersIcon,
+    },
+    {
+      title: "Vendedores",
+      url: "/dashboard/vendedores",
+      icon: UserCheckIcon,
     },
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    image?: string | null;
+  };
+}
+
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" {...props} variant="inset">
       <SidebarHeader>
@@ -73,11 +85,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         <SidebarGroup>
+          <SidebarGroupLabel>Administración</SidebarGroupLabel>
+          <SidebarMenu>
+            {data.navAdmin.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <Link href={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup>
           <SidebarGroupLabel>Labs</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Agente de Ventas">
-                <Link href="/agent-playground">
+                <Link href="/dashboard/agent-playground">
                   <BotIcon />
                   <span>Agente de Ventas</span>
                 </Link>
@@ -86,9 +113,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
+      {user && (
+        <SidebarFooter>
+          <NavUser
+            user={{
+              name: user.name,
+              email: user.email,
+              avatar: user.image || "/avatars/user.jpg",
+            }}
+          />
+        </SidebarFooter>
+      )}
       <SidebarRail />
     </Sidebar>
   );

@@ -103,7 +103,8 @@ export class OrderRepositoryImpl implements OrderRepository {
         notes: orderData.notes,
         items: {
           create: orderData.items.map((item) => ({
-            productId: item.productId,
+            distributorId: orderData.distributorId,
+            product: { connect: { id: item.productId } },
             quantity: item.quantity,
             price: item.price,
             subtotal: item.price * item.quantity,

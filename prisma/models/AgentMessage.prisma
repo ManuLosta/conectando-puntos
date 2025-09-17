@@ -1,0 +1,29 @@
+model WhatsAppSession {
+  id           String   @id @default(cuid())
+  phoneNumber  String
+  distributorId String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  expiresAt    DateTime
+
+  // Relationships
+  distributor Distributor      @relation(fields: [distributorId], references: [id], onDelete: Cascade)
+  messages    WhatsAppMessage[]
+
+  @@unique([phoneNumber, distributorId])
+  @@map("whatsapp_sessions")
+}
+
+model WhatsAppMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  role      String   // "user" or "assistant"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  // Relationships
+  session WhatsAppSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_messages")
+}
