@@ -14,22 +14,40 @@ import { Search, Plus, UserCheck } from "lucide-react";
 import { VendorsTable } from "@/components/vendors/vendors-table";
 import { VendorsLoading } from "@/components/vendors/vendors-loading";
 import { salespersonService } from "@/services/salesperson.service";
-
-// Mock distributor ID - in a real app, this would come from the user session
-const MOCK_DISTRIBUTOR_ID = "cmfndn9pf00003asbevn4stoy";
+import { userService } from "@/services/user.service";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 async function VendorsData() {
   try {
+    // Get user session to determine distributor ID
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user?.id) {
+      throw new Error("No user session found");
+    }
+
+    // Get distributor ID for the current user
+    const distributorId = await userService.getDistributorIdForUser(
+      session.user.id,
+    );
+
+    if (!distributorId) {
+      throw new Error("No distributor found for user");
+    }
+
     // Fetch real data from the database
     const dbSalespeople =
-      await salespersonService.listForDistributor(MOCK_DISTRIBUTOR_ID);
+      await salespersonService.listForDistributor(distributorId);
 
     // Transform database data to match the component interface
     const vendors = await Promise.all(
       dbSalespeople.map(async (salesperson) => {
         // Get sales statistics for each salesperson
         const stats = await salespersonService.getSalesStatsForDistributor(
-          MOCK_DISTRIBUTOR_ID,
+          distributorId,
           salesperson.id,
         );
 
@@ -53,35 +71,31 @@ async function VendorsData() {
   } catch (error) {
     console.error("Error fetching vendors:", error);
 
-    // Fallback to mock data if database fetch fails
-    const fallbackVendors = [
-      {
-        id: "1",
-        name: "Juan Pérez",
-        email: "juan.perez@conectandopuntos.com",
-        phone: "+54 11 5555-0001",
-        lastSale: "2024-01-15",
-        totalSold: 45750.0,
-        status: "active" as const,
-        clientsCount: 12,
-      },
-      {
-        id: "2",
-        name: "Ana Gómez",
-        email: "ana.gomez@conectandopuntos.com",
-        phone: "+54 11 5555-0002",
-        lastSale: "2024-01-14",
-        totalSold: 38900.0,
-        status: "active" as const,
-        clientsCount: 8,
-      },
-    ];
-
-    return <VendorsTable vendors={fallbackVendors} />;
+    // If no distributor found, show empty state
+    if (
+      error instanceof Error &&
+      error.message.includes("No distributor found")
+    ) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">
+            No se encontró un distribuidor asociado a tu cuenta.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Contacta al administrador para configurar tu acceso.
+          </p>
+        </div>
+      );
+    }
   }
 }
 
-export default function VendedoresPage() {
+export default async function VendedoresPage() {
+  // Get user session to pass distributor context if needed
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">

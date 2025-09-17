@@ -44,24 +44,24 @@ const data = {
     },
     {
       title: "Pedidos",
-      url: "/pedidos",
+      url: "/dashboard/pedidos",
       icon: ShoppingCartIcon,
     },
     {
       title: "Cobranzas",
-      url: "#",
+      url: "/dashboard/cobranzas",
       icon: DollarSignIcon,
     },
   ],
   navAdmin: [
     {
       title: "Clientes",
-      url: "/clientes",
+      url: "/dashboard/clientes",
       icon: UsersIcon,
     },
     {
       title: "Vendedores",
-      url: "/vendedores",
+      url: "/dashboard/vendedores",
       icon: UserCheckIcon,
     },
   ],
