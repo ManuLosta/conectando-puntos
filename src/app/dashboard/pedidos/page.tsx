@@ -167,35 +167,8 @@ export default async function PedidosPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="flex flex-1  mt-2 flex-col gap-4 p-4 pt-0">
         <div className="flex flex-col gap-4">
-          {/* Header with title */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold">Gestión de Pedidos</h1>
-              <p className="text-muted-foreground">
-                Administra y realiza seguimiento de todos los pedidos de tus
-                clientes
-              </p>
-            </div>
-          </div>
-
-          {/* Filtros globales */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filtros y Búsqueda</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por cliente, número de pedido..."
-                  className="pl-10"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Tabs para las 3 zonas */}
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
