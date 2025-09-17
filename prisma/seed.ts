@@ -473,6 +473,7 @@ async function main() {
         stock: stock,
         lotNumber: lotNumber,
         expirationDate: expirationDate,
+        distributorId: product.distributorId,
       },
     });
   }
@@ -652,6 +653,7 @@ async function main() {
           quantity: item.quantity,
           price: item.price,
           subtotal: item.price * item.quantity,
+          distributorId: selectedDistributor.id,
         },
       });
     }

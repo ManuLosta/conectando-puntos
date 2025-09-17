@@ -12,6 +12,7 @@ model Distributor {
   userTenants    UserTenant[]
   salespeople    Salesperson[]
   products       Product[]
+  inventoryItems InventoryItem[]
   clients        ClientDistributor[]
   orders         Order[]
 
