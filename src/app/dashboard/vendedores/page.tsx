@@ -7,13 +7,11 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Plus, UserCheck } from "lucide-react";
+import { UserCheck } from "lucide-react";
 import { VendorsTable } from "@/components/vendors/vendors-table";
 import { VendorsLoading } from "@/components/vendors/vendors-loading";
-import { NewVendorModal } from "@/components/vendors/new-vendor-modal";
+import { VendorsPageClient } from "@/components/vendors/vendors-page-client";
 import { salespersonService } from "@/services/salesperson.service";
 import { userService } from "@/services/user.service";
 import { auth } from "@/lib/auth";
@@ -89,7 +87,7 @@ export default async function VendedoresPage() {
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-        <div className="flex items-center gap-2 px-4">
+        <div className="flex items-center gap-2 px-2 sm:px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
@@ -102,57 +100,25 @@ export default async function VendedoresPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="flex flex-col gap-4">
-          {/* Header with title and actions */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold">Gestión de Vendedores</h1>
-              <p className="text-muted-foreground">
-                Administra tu equipo de ventas y su rendimiento
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <NewVendorModal />
-            </div>
+      <div className="flex flex-1 flex-col gap-2 sm:gap-4 px-4 sm:px-8 py-2 sm:py-4">
+        <VendorsPageClient>
+          <div className="flex flex-col gap-2 sm:gap-4">
+            {/* Vendors List */}
+            <Card>
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Vendedores
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 sm:px-8">
+                <Suspense fallback={<VendorsLoading />}>
+                  <VendorsData />
+                </Suspense>
+              </CardContent>
+            </Card>
           </div>
-
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filtros y Búsqueda</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4 items-center">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nombre, email o teléfono..."
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Vendors List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserCheck className="h-5 w-5" />
-                Lista de Vendedores
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Gestiona tu equipo de ventas
-              </p>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<VendorsLoading />}>
-                <VendorsData />
-              </Suspense>
-            </CardContent>
-          </Card>
-        </div>
+        </VendorsPageClient>
       </div>
     </>
   );

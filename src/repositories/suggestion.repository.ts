@@ -1,5 +1,6 @@
 import { SuggestedProduct } from "@/types/suggestedProduct";
 import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export interface SuggestionRepository {
   getSuggestedProducts(
@@ -346,5 +347,4 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
   }
 }
 
-const prisma = new PrismaClient();
 export const suggestionRepo = new PrismaSuggestionRepository(prisma);

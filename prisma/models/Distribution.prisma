@@ -13,61 +13,51 @@ model Distributor {
   salespeople      Salesperson[]
   products         Product[]
   inventoryItems   InventoryItem[]
-  clients          ClientDistributor[]
+  clients          Client[]
   orders           Order[]
   whatsappSessions WhatsAppSession[]
 
   @@map("distributors")
 }
 
-model ClientDistributor {
-  id           String @id @default(cuid())
-  distributorId String
-  clientId     String
-
-  // Client-specific pricing or terms
-  discount        Decimal? @db.Decimal(5, 2)
-  creditLimit     Decimal? @db.Decimal(10, 2)
-  paymentTerms    String?  // "30 days", "cash", etc.
+model Client {
+  id                    String  @id @default(cuid())
+  distributorId         String
+  name                  String
+  phone                 String? @unique
+  email                 String? @unique
+  address               String?
+  city                  String?
+  postalCode            String?
+  clientType            String?
+  notes                 String?
+  assignedSalespersonId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relationships
-  distributor Distributor @relation(fields: [distributorId], references: [id])
-  client      FinalClient @relation(fields: [clientId], references: [id])
+  distributor         Distributor  @relation(fields: [distributorId], references: [id])
+  assignedSalesperson Salesperson? @relation("AssignedSalesperson", fields: [assignedSalespersonId], references: [id])
+  orders              Order[]
 
-  @@unique([distributorId, clientId])
-  @@map("client_distributors")
+  @@index([distributorId, createdAt])
+  @@map("clients")
 }
 
 model Salesperson {
-  id           String @id @default(cuid())
-  userId       String @unique
+  id            String  @id @default(cuid())
   distributorId String
-  territory    String?
+  name          String
+  email         String
+  territory     String?
 
-  phone        String?  @unique
+  phone String? @unique
 
   // Relationships
-  distributor Distributor @relation(fields: [distributorId], references: [id])
-  orders      Order[]
+  distributor     Distributor @relation(fields: [distributorId], references: [id])
+  orders          Order[]
+  assignedClients Client[]    @relation("AssignedSalesperson")
 
   @@map("salespeople")
-}
-
-model FinalClient {
-  id         String  @id @default(cuid())
-  userId     String  @unique
-  name       String
-  phone      String? @unique
-  address    String?
-  city       String?
-  postalCode String?
-
-  // Relationships
-  orders            Order[]
-  distributorClients ClientDistributor[]
-
-  @@map("final_clients")
 }

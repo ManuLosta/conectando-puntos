@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export interface StockItem {
   id: string;
@@ -180,5 +181,4 @@ export class PrismaStockRepository implements StockRepository {
   }
 }
 
-const prisma = new PrismaClient();
 export const stockRepo = new PrismaStockRepository(prisma);
