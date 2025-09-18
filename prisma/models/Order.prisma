@@ -35,7 +35,7 @@ model Order {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  client         FinalClient?  @relation(fields: [clientId], references: [id])
+  client         Client?  @relation(fields: [clientId], references: [id])
   salesperson    Salesperson?  @relation(fields: [salespersonId], references: [id])
   distributor    Distributor   @relation(fields: [distributorId], references: [id])
   items          OrderItem[]

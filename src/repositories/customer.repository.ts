@@ -1,12 +1,28 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Client } from "@prisma/client";
 
 export interface Customer {
   id: string;
   name: string;
   phone?: string;
+  email?: string;
   address?: string;
   city?: string;
   postalCode?: string;
+  clientType?: string;
+  notes?: string;
+  assignedSalespersonId?: string;
+}
+
+export interface CreateCustomerInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  clientType?: string;
+  notes?: string;
+  assignedSalespersonId?: string;
 }
 
 export interface CustomerRepository {
@@ -28,28 +44,31 @@ export interface CustomerRepository {
     distributorId: string,
     query: string,
   ): Promise<Customer[]>;
+  createForDistributor(
+    distributorId: string,
+    data: CreateCustomerInput,
+  ): Promise<Customer>;
 }
 
 export class PrismaCustomerRepository implements CustomerRepository {
   constructor(private prisma: PrismaClient) {}
 
   async listForDistributor(distributorId: string): Promise<Customer[]> {
-    const clientDistributors = await this.prisma.clientDistributor.findMany({
-      where: {
-        distributorId: distributorId,
-      },
-      include: {
-        client: true,
-      },
+    const clients = await this.prisma.client.findMany({
+      where: { distributorId },
     });
 
-    return clientDistributors.map((cd) => ({
-      id: cd.client.id,
-      name: cd.client.name,
-      phone: cd.client.phone || undefined,
-      address: cd.client.address || undefined,
-      city: cd.client.city || undefined,
-      postalCode: cd.client.postalCode || undefined,
+    return clients.map((c: Client) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone || undefined,
+      email: c.email || undefined,
+      address: c.address || undefined,
+      city: c.city || undefined,
+      postalCode: c.postalCode || undefined,
+      clientType: c.clientType || undefined,
+      notes: c.notes || undefined,
+      assignedSalespersonId: c.assignedSalespersonId || undefined,
     }));
   }
 
@@ -59,30 +78,29 @@ export class PrismaCustomerRepository implements CustomerRepository {
   ): Promise<Customer | null> {
     const normalizedName = name.trim().toLowerCase();
 
-    const clientDistributor = await this.prisma.clientDistributor.findFirst({
+    const client = await this.prisma.client.findFirst({
       where: {
         distributorId: distributorId,
-        client: {
-          name: {
-            contains: normalizedName,
-            mode: "insensitive",
-          },
+        name: {
+          contains: normalizedName,
+          mode: "insensitive",
         },
-      },
-      include: {
-        client: true,
       },
     });
 
-    if (!clientDistributor) return null;
+    if (!client) return null;
 
     return {
-      id: clientDistributor.client.id,
-      name: clientDistributor.client.name,
-      phone: clientDistributor.client.phone || undefined,
-      address: clientDistributor.client.address || undefined,
-      city: clientDistributor.client.city || undefined,
-      postalCode: clientDistributor.client.postalCode || undefined,
+      id: client.id,
+      name: client.name,
+      phone: client.phone || undefined,
+      email: client.email || undefined,
+      address: client.address || undefined,
+      city: client.city || undefined,
+      postalCode: client.postalCode || undefined,
+      clientType: client.clientType || undefined,
+      notes: client.notes || undefined,
+      assignedSalespersonId: client.assignedSalespersonId || undefined,
     };
   }
 
@@ -90,27 +108,26 @@ export class PrismaCustomerRepository implements CustomerRepository {
     distributorId: string,
     phone: string,
   ): Promise<Customer | null> {
-    const clientDistributor = await this.prisma.clientDistributor.findFirst({
+    const client = await this.prisma.client.findFirst({
       where: {
         distributorId: distributorId,
-        client: {
-          phone: phone,
-        },
-      },
-      include: {
-        client: true,
+        phone: phone,
       },
     });
 
-    if (!clientDistributor) return null;
+    if (!client) return null;
 
     return {
-      id: clientDistributor.client.id,
-      name: clientDistributor.client.name,
-      phone: clientDistributor.client.phone || undefined,
-      address: clientDistributor.client.address || undefined,
-      city: clientDistributor.client.city || undefined,
-      postalCode: clientDistributor.client.postalCode || undefined,
+      id: client.id,
+      name: client.name,
+      phone: client.phone || undefined,
+      email: client.email || undefined,
+      address: client.address || undefined,
+      city: client.city || undefined,
+      postalCode: client.postalCode || undefined,
+      clientType: client.clientType || undefined,
+      notes: client.notes || undefined,
+      assignedSalespersonId: client.assignedSalespersonId || undefined,
     };
   }
 
@@ -118,25 +135,26 @@ export class PrismaCustomerRepository implements CustomerRepository {
     distributorId: string,
     clientId: string,
   ): Promise<Customer | null> {
-    const clientDistributor = await this.prisma.clientDistributor.findFirst({
+    const client = await this.prisma.client.findFirst({
       where: {
         distributorId: distributorId,
-        clientId: clientId,
-      },
-      include: {
-        client: true,
+        id: clientId,
       },
     });
 
-    if (!clientDistributor) return null;
+    if (!client) return null;
 
     return {
-      id: clientDistributor.client.id,
-      name: clientDistributor.client.name,
-      phone: clientDistributor.client.phone || undefined,
-      address: clientDistributor.client.address || undefined,
-      city: clientDistributor.client.city || undefined,
-      postalCode: clientDistributor.client.postalCode || undefined,
+      id: client.id,
+      name: client.name,
+      phone: client.phone || undefined,
+      email: client.email || undefined,
+      address: client.address || undefined,
+      city: client.city || undefined,
+      postalCode: client.postalCode || undefined,
+      clientType: client.clientType || undefined,
+      notes: client.notes || undefined,
+      assignedSalespersonId: client.assignedSalespersonId || undefined,
     };
   }
 
@@ -156,51 +174,83 @@ export class PrismaCustomerRepository implements CustomerRepository {
 
     const normalizedQuery = query.trim().toLowerCase();
 
-    const clientDistributors = await this.prisma.clientDistributor.findMany({
+    const clients = await this.prisma.client.findMany({
       where: {
         distributorId: distributorId,
-        client: {
-          OR: [
-            {
-              name: {
-                contains: normalizedQuery,
-                mode: "insensitive",
-              },
+        OR: [
+          {
+            name: {
+              contains: normalizedQuery,
+              mode: "insensitive",
             },
-            {
-              phone: {
-                contains: normalizedQuery,
-                mode: "insensitive",
-              },
+          },
+          {
+            phone: {
+              contains: normalizedQuery,
+              mode: "insensitive",
             },
-            {
-              address: {
-                contains: normalizedQuery,
-                mode: "insensitive",
-              },
+          },
+          {
+            address: {
+              contains: normalizedQuery,
+              mode: "insensitive",
             },
-            {
-              city: {
-                contains: normalizedQuery,
-                mode: "insensitive",
-              },
+          },
+          {
+            city: {
+              contains: normalizedQuery,
+              mode: "insensitive",
             },
-          ],
-        },
-      },
-      include: {
-        client: true,
+          },
+        ],
       },
     });
 
-    return clientDistributors.map((cd) => ({
-      id: cd.client.id,
-      name: cd.client.name,
-      phone: cd.client.phone || undefined,
-      address: cd.client.address || undefined,
-      city: cd.client.city || undefined,
-      postalCode: cd.client.postalCode || undefined,
+    return clients.map((c: Client) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone || undefined,
+      email: c.email || undefined,
+      address: c.address || undefined,
+      city: c.city || undefined,
+      postalCode: c.postalCode || undefined,
+      clientType: c.clientType || undefined,
+      notes: c.notes || undefined,
+      assignedSalespersonId: c.assignedSalespersonId || undefined,
     }));
+  }
+
+  async createForDistributor(
+    distributorId: string,
+    data: CreateCustomerInput,
+  ): Promise<Customer> {
+    const client = await this.prisma.client.create({
+      data: {
+        distributorId,
+        name: data.name,
+        phone: data.phone || null,
+        email: data.email || null,
+        address: data.address || null,
+        city: data.city || null,
+        postalCode: data.postalCode || null,
+        clientType: data.clientType || null,
+        notes: data.notes || null,
+        assignedSalespersonId: data.assignedSalespersonId || null,
+      },
+    });
+
+    return {
+      id: client.id,
+      name: client.name,
+      phone: client.phone || undefined,
+      email: client.email || undefined,
+      address: client.address || undefined,
+      city: client.city || undefined,
+      postalCode: client.postalCode || undefined,
+      clientType: client.clientType || undefined,
+      notes: client.notes || undefined,
+      assignedSalespersonId: client.assignedSalespersonId || undefined,
+    };
   }
 }
 
