@@ -1,4 +1,7 @@
-import { PrismaSalespersonRepository } from "@/repositories/salesperson.repository";
+import {
+  PrismaSalespersonRepository,
+  CreateSalespersonInput,
+} from "@/repositories/salesperson.repository";
 import { Salesperson } from "@/repositories/salesperson.repository";
 import { withTenant } from "@/lib/tenant-context";
 
@@ -8,6 +11,10 @@ export interface SalespersonService {
     distributorId: string,
     salespersonId: string,
   ): Promise<Salesperson | null>;
+  createForDistributor(
+    distributorId: string,
+    data: CreateSalespersonInput,
+  ): Promise<Salesperson>;
 }
 
 class SalespersonServiceImpl implements SalespersonService {
@@ -31,6 +38,20 @@ class SalespersonServiceImpl implements SalespersonService {
       new PrismaSalespersonRepository(tx).findByIdForDistributor(
         distributorId,
         salespersonId,
+      ),
+    );
+  }
+
+  async createForDistributor(
+    distributorId: string,
+    data: CreateSalespersonInput,
+    options?: { bypassRls?: boolean; userId?: string },
+  ) {
+    const { bypassRls = false, userId = "system" } = options ?? {};
+    return withTenant({ userId, distributorId, bypassRls }, async (tx) =>
+      new PrismaSalespersonRepository(tx).createForDistributor(
+        distributorId,
+        data,
       ),
     );
   }

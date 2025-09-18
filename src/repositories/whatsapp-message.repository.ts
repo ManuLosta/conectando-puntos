@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export interface CreateSessionInput {
   phoneNumber: string;
@@ -200,5 +201,4 @@ export class WhatsAppMessageRepositoryImpl
   }
 }
 
-const prisma = new PrismaClient();
 export const whatsAppMessageRepo = new WhatsAppMessageRepositoryImpl(prisma);

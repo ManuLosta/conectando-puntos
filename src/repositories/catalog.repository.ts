@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export interface CatalogItem {
   id: string;
@@ -157,5 +158,4 @@ export class PrismaCatalogRepository implements CatalogRepository {
   }
 }
 
-const prisma = new PrismaClient();
 export const catalogRepo = new PrismaCatalogRepository(prisma);

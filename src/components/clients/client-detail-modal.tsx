@@ -180,12 +180,14 @@ export function ClientDetailModal({
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">{client.email}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      Registrado: {formatDate(client.registrationDate)}
-                    </span>
-                  </div>
+                  {client.registrationDate && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        Registrado: {formatDate(client.registrationDate)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -209,18 +211,22 @@ export function ClientDetailModal({
                     <span className="text-sm">Estado:</span>
                     {getStatusBadge(client.status)}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Términos de Pago:</span>
-                    <span className="text-sm font-medium">
-                      {client.paymentTerms}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Límite de Crédito:</span>
-                    <span className="text-sm font-medium">
-                      {formatCurrency(client.creditLimit)}
-                    </span>
-                  </div>
+                  {client.paymentTerms && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Términos de Pago:</span>
+                      <span className="text-sm font-medium">
+                        {client.paymentTerms}
+                      </span>
+                    </div>
+                  )}
+                  {client.creditLimit > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Límite de Crédito:</span>
+                      <span className="text-sm font-medium">
+                        {formatCurrency(client.creditLimit)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -290,30 +296,43 @@ export function ClientDetailModal({
           {/* Recent Orders */}
           <div>
             <h3 className="text-lg font-semibold mb-3">Pedidos Recientes</h3>
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Pedido</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {client.recentOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
-                      <TableCell>{formatDate(order.date)}</TableCell>
-                      <TableCell>{getOrderStatusBadge(order.status)}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(order.amount)}
-                      </TableCell>
+            {client.recentOrders.length > 0 ? (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Pedido</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {client.recentOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">
+                          {order.id}
+                        </TableCell>
+                        <TableCell>{formatDate(order.date)}</TableCell>
+                        <TableCell>
+                          {getOrderStatusBadge(order.status)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(order.amount)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="border rounded-lg p-8 text-center">
+                <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  Este cliente aún no tiene pedidos registrados
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Notes */}
