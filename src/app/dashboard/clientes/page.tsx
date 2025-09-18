@@ -21,15 +21,35 @@ import { Search, Plus, Users, TrendingUp, TrendingDown } from "lucide-react";
 import { ClientsTable } from "@/components/clients/clients-table";
 import { ClientsLoading } from "@/components/clients/clients-loading";
 import { customerService } from "@/services/customer.service";
+import { userService } from "@/services/user.service";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
-// Mock distributor ID - in a real app, this would come from the user session
-const MOCK_DISTRIBUTOR_ID = "cmfndn9pf00003asbevn4stoy";
+export const dynamic = "force-dynamic";
 
 async function ClientsData() {
   try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user?.id) {
+      throw new Error("No user session found");
+    }
+
+    const distributorId = await userService.getDistributorIdForUser(
+      session.user.id,
+    );
+
+    if (!distributorId) {
+      throw new Error("No distributor found for user");
+    }
+
+    const userInfo = await userService.getUserTenantInfo(session.user.id);
+    const isSuperadmin = userInfo?.role === "SUPER_ADMIN";
+
     // Fetch real data from the database
-    const dbClients =
-      await customerService.listForDistributor(MOCK_DISTRIBUTOR_ID);
+    const dbClients = await customerService.listForDistributor(distributorId);
 
     // Transform database data to match the component interface
     const clients = dbClients.map((client, index) => {
@@ -67,37 +87,32 @@ async function ClientsData() {
   } catch (error) {
     console.error("Error fetching clients:", error);
 
-    // Fallback to mock data if database fetch fails
-    const fallbackClients = [
-      {
-        id: "1",
-        name: "Supermercado La Abundancia",
-        address: "Av. Corrientes 1234, CABA",
-        type: "Supermercado",
-        lastPurchase: "2024-01-15",
-        totalAmount: 15750.0,
-        trend: "up" as const,
-        phone: "+54 11 4567-8901",
-        email: "contacto@laabundancia.com",
-      },
-      {
-        id: "2",
-        name: "Mercado Chino El Dragón",
-        address: "Av. San Martín 567, CABA",
-        type: "Mercado Chino",
-        lastPurchase: "2024-01-14",
-        totalAmount: 28900.0,
-        trend: "up" as const,
-        phone: "+54 11 4567-8902",
-        email: "info@eldragon.com",
-      },
-    ];
+    // If no distributor found, show empty state
+    if (
+      error instanceof Error &&
+      error.message.includes("No distributor found")
+    ) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">
+            No se encontró un distribuidor asociado a tu cuenta.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Contacta al administrador para configurar tu acceso.
+          </p>
+        </div>
+      );
+    }
 
-    return <ClientsTable clients={fallbackClients} />;
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Error cargando los clientes.</p>
+      </div>
+    );
   }
 }
 
-export default function ClientesPage() {
+export default async function ClientesPage() {
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
