@@ -207,17 +207,98 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
 
     // 7. Sort and limit results
     suggestions.sort((a, b) => {
-      // New products first
-      if (a.f_is_new && !b.f_is_new) return -1;
-      if (!a.f_is_new && b.f_is_new) return 1;
+      // Helper function to calculate high rotation score
+      const getHighRotationScore = (product: SuggestedProduct) => {
+        // High rotation = many orders with many different buyers
+        const ordersBuyersRatio =
+          product.f_global_buyers_cnt_1y > 0
+            ? product.f_global_orders_cnt_1y / product.f_global_buyers_cnt_1y
+            : 0;
+        return ordersBuyersRatio;
+      };
 
-      // Then by global popularity
-      if (a.f_global_orders_cnt_1y !== b.f_global_orders_cnt_1y) {
-        return b.f_global_orders_cnt_1y - a.f_global_orders_cnt_1y;
-      }
+      // Helper function to calculate client affinity score
+      const getClientAffinityScore = (product: SuggestedProduct) => {
+        let score = 0;
+        // Base score from purchase history
+        score += product.f_client_qty_26w * 10;
+        score += product.f_client_orders_cnt_26w * 5;
 
-      // Finally by client purchase history
-      return b.f_client_qty_26w - a.f_client_qty_26w;
+        // Bonus if client bought before
+        if (product.f_client_bought_before) {
+          score += 20;
+
+          // Additional bonus if it's been a while since last purchase (encourage repeat)
+          if (product.f_last_buy_at) {
+            const daysSinceLastBuy = Math.floor(
+              (asOf.getTime() - product.f_last_buy_at.getTime()) /
+                (24 * 60 * 60 * 1000),
+            );
+            if (daysSinceLastBuy > 30 && daysSinceLastBuy < 180) {
+              score += 15; // Sweet spot for repeat purchases
+            }
+          }
+        }
+        return score;
+      };
+
+      // Helper function to calculate global popularity score
+      const getGlobalPopularityScore = (product: SuggestedProduct) => {
+        let score = 0;
+        score += product.f_global_orders_cnt_1y * 2;
+        score += product.f_global_buyers_cnt_1y * 3;
+        score += product.f_global_qty_1y * 0.1;
+        return score;
+      };
+
+      // Helper function to calculate price favorability (lower price = higher score)
+      const getPriceFavorabilityScore = (product: SuggestedProduct) => {
+        // Normalize price score (higher score for lower prices)
+        // Assuming price range 0-1000, invert it
+        return Math.max(0, 1000 - product.price) / 10;
+      };
+
+      // Calculate scores for both products
+      const scoreA = {
+        expiringSoon: a.f_expiring_soon ? 1000 : 0, // Highest priority
+        clientAffinity: getClientAffinityScore(a),
+        globalPopularity: getGlobalPopularityScore(a),
+        isNew: a.f_is_new ? 200 : 0,
+        highRotation: getHighRotationScore(a) * 50,
+        priceFavorability: getPriceFavorabilityScore(a),
+        hasStock: a.f_has_stock ? 50 : 0,
+      };
+
+      const scoreB = {
+        expiringSoon: b.f_expiring_soon ? 1000 : 0,
+        clientAffinity: getClientAffinityScore(b),
+        globalPopularity: getGlobalPopularityScore(b),
+        isNew: b.f_is_new ? 200 : 0,
+        highRotation: getHighRotationScore(b) * 50,
+        priceFavorability: getPriceFavorabilityScore(b),
+        hasStock: b.f_has_stock ? 50 : 0,
+      };
+
+      // Total weighted score
+      const totalA =
+        scoreA.expiringSoon +
+        scoreA.clientAffinity * 3 + // Highest weight for client affinity
+        scoreA.globalPopularity * 2 + // Second weight for global popularity
+        scoreA.isNew * 1.5 + // Third weight for new products
+        scoreA.highRotation * 1.2 + // Fourth weight for high rotation
+        scoreA.priceFavorability * 1 + // Fifth weight for price
+        scoreA.hasStock; // Base requirement
+
+      const totalB =
+        scoreB.expiringSoon +
+        scoreB.clientAffinity * 3 +
+        scoreB.globalPopularity * 2 +
+        scoreB.isNew * 1.5 +
+        scoreB.highRotation * 1.2 +
+        scoreB.priceFavorability * 1 +
+        scoreB.hasStock;
+
+      return totalB - totalA; // Higher score first
     });
 
     return suggestions.slice(0, top);
