@@ -4,6 +4,7 @@ import { catalogService } from "@/services/catalog.service";
 import { orderService } from "@/services/order.service";
 import { customerService } from "@/services/customer.service";
 import { stockService } from "@/services/stock.service";
+import { suggestionService } from "@/services/suggestion.service";
 // import { suggestionService } from "@/services/suggestion.service";
 
 export const buscarProductos = tool({
@@ -99,7 +100,7 @@ export const confirmarOrden = tool({
   },
 });
 
-/*export const sugerirProductos = tool({
+export const sugerirProductos = tool({
   description:
     "Sugiere productos para vender más: expiran pronto o habituales del cliente.",
   inputSchema: z.object({
@@ -129,7 +130,7 @@ export const confirmarOrden = tool({
     );
     return suggestions;
   },
-}); */
+});
 
 export const listarClientes = tool({
   description: "Lista todos los clientes de la distribuidora del vendedor.",
@@ -185,7 +186,7 @@ export const tools = {
   consultarStock,
   crearOrden,
   confirmarOrden,
-  //  sugerirProductos,
+  sugerirProductos,
   listarClientes,
   buscarClientes,
   obtenerOrden,
