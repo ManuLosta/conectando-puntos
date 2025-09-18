@@ -7,7 +7,6 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
 const API_VERSION = process.env.WHATSAPP_API_VERSION || "v23.0";
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN!;
 
-// Memoria para evitar procesar mensajes duplicados
 const processedMessages = new Set<string>();
 
 function normalizePhoneNumber(phoneNumber: string): string {
