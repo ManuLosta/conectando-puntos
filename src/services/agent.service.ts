@@ -82,7 +82,6 @@ export async function runAgent({
   }
 
   try {
-    // Get distributor ID and salesperson info for this phone number
     const distributorId = await getDistributorFromPhone(phoneNumber);
     const salespersonId = await userRepo.getSalespersonIdByPhone(phoneNumber);
 
@@ -90,25 +89,21 @@ export async function runAgent({
       throw new Error(`No se encontró vendedor con teléfono ${phoneNumber}`);
     }
 
-    // Get or create WhatsApp session for this phone and distributor
     const session = await whatsAppMessageService.getOrCreateSession(
       phoneNumber,
       distributorId,
     );
 
-    // Get conversation history from database
     const historyMsgs = await whatsAppMessageService.getSessionHistory(
       phoneNumber,
       distributorId,
     );
 
-    // Clean and prepare messages for AI model
     const msgs: ModelMessage[] = historyMsgs.map((msg) => ({
       role: msg.role as "user" | "assistant" | "system",
       content: String(msg.content || ""),
     }));
 
-    // Add the new user message
     msgs.push({ role: "user", content: trimmedText });
 
     const { response } = await generateText({

@@ -54,8 +54,19 @@ export class WhatsAppMessageRepositoryImpl
   async createSession(
     sessionData: CreateSessionInput,
   ): Promise<WhatsAppSessionWithMessages> {
-    const session = await this.prisma.whatsAppSession.create({
-      data: sessionData,
+    const session = await this.prisma.whatsAppSession.upsert({
+      where: {
+        phoneNumber_distributorId: {
+          phoneNumber: sessionData.phoneNumber,
+          distributorId: sessionData.distributorId,
+        },
+      },
+      update: {
+        // Reactivate and extend the session on concurrent creates
+        isActive: true,
+        expiresAt: sessionData.expiresAt,
+      },
+      create: sessionData,
       include: {
         messages: {
           orderBy: { createdAt: "asc" },
