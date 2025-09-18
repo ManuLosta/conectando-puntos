@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Plus, Users, TrendingUp, TrendingDown } from "lucide-react";
 import { ClientsTable } from "@/components/clients/clients-table";
 import { ClientsLoading } from "@/components/clients/clients-loading";
+import { NewClientModal } from "@/components/clients/new-client-modal";
 import { customerService } from "@/services/customer.service";
 import { userService } from "@/services/user.service";
 import { auth } from "@/lib/auth";
@@ -140,10 +141,7 @@ export default async function ClientesPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Cliente
-              </Button>
+              <NewClientModal />
             </div>
           </div>
 

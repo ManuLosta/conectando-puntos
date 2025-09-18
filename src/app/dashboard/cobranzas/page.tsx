@@ -36,6 +36,7 @@ import type {
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { userService } from "@/services/user.service";
+import { RegisterPaymentModal } from "@/components/cobranzas/register-payment-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -279,10 +280,6 @@ function CobranzasTableDisplay({ facturas }: { facturas: FacturaCobranza[] }) {
               Controla todas las facturas pendientes de cobro
             </p>
           </div>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Registrar Cobro
-          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -354,10 +351,7 @@ export default async function CobranzasPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Registrar Cobro
-              </Button>
+              <RegisterPaymentModal />
             </div>
           </div>
 

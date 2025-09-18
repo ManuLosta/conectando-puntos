@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Plus, UserCheck } from "lucide-react";
 import { VendorsTable } from "@/components/vendors/vendors-table";
 import { VendorsLoading } from "@/components/vendors/vendors-loading";
+import { NewVendorModal } from "@/components/vendors/new-vendor-modal";
 import { salespersonService } from "@/services/salesperson.service";
 import { userService } from "@/services/user.service";
 import { auth } from "@/lib/auth";
@@ -112,10 +113,7 @@ export default async function VendedoresPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Vendedor
-              </Button>
+              <NewVendorModal />
             </div>
           </div>
 
