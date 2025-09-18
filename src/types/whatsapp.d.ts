@@ -5,6 +5,18 @@ export interface WhatsAppMessage {
   text?: {
     body: string;
   };
+  interactive?: {
+    type: string;
+    button_reply?: {
+      id: string;
+      title: string;
+    };
+    list_reply?: {
+      id: string;
+      title: string;
+      description?: string;
+    };
+  };
 }
 
 export interface WhatsAppWebhookBody {
@@ -15,4 +27,51 @@ export interface WhatsAppWebhookBody {
       };
     }>;
   }>;
+}
+
+export interface WhatsAppInteractiveMessage {
+  type: "button" | "list";
+  header?: {
+    type: "text";
+    text: string;
+  };
+  body: {
+    text: string;
+  };
+  footer?: {
+    text: string;
+  };
+  action: ButtonAction | ListAction;
+}
+
+export interface ButtonAction {
+  buttons: Array<{
+    type: "reply";
+    reply: {
+      id: string;
+      title: string;
+    };
+  }>;
+}
+
+export interface ListAction {
+  button: string;
+  sections: Array<{
+    title?: string;
+    rows: Array<{
+      id: string;
+      title: string;
+      description?: string;
+    }>;
+  }>;
+}
+
+export interface WhatsAppFormattedResponse {
+  messaging_product: "whatsapp";
+  to: string;
+  type: "text" | "interactive";
+  text?: {
+    body: string;
+  };
+  interactive?: WhatsAppInteractiveMessage;
 }

@@ -23,4 +23,9 @@ export type SuggestedProduct = {
   f_min_days_to_expiry: number | null;
   f_has_stock: boolean;
   f_expiring_soon: boolean;
+
+  // Descuentos
+  f_discount_percentage: number | null;
+  f_discounted_price: number | null;
+  f_has_discount: boolean;
 };

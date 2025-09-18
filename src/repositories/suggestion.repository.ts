@@ -174,6 +174,14 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
         distributorId,
         isActive: true,
       },
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        price: true,
+        discount: true,
+        discountedPrice: true,
+      },
     });
 
     const suggestions: SuggestedProduct[] = products.map((product) => {
@@ -202,6 +210,13 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
           stock?.minDaysToExpiry !== null &&
           stock?.minDaysToExpiry !== undefined &&
           stock.minDaysToExpiry < minExpiryDays,
+        f_discount_percentage: product.discount
+          ? Number(product.discount)
+          : null,
+        f_discounted_price: product.discountedPrice
+          ? Number(product.discountedPrice)
+          : null,
+        f_has_discount: !!product.discount && Number(product.discount) > 0,
       };
     });
 
@@ -258,6 +273,28 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
         return Math.max(0, 1000 - product.price) / 10;
       };
 
+      // Helper function to calculate discount score
+      const getDiscountScore = (product: SuggestedProduct) => {
+        if (!product.f_has_discount || !product.f_discount_percentage) {
+          return 0;
+        }
+
+        // Score increases with discount percentage
+        // Good discounts (>10%) get significant boost for operational efficiency
+        const discountPercentage = product.f_discount_percentage;
+        if (discountPercentage >= 20) {
+          return 100; // Excellent discount
+        } else if (discountPercentage >= 15) {
+          return 75; // Very good discount
+        } else if (discountPercentage >= 10) {
+          return 50; // Good discount
+        } else if (discountPercentage >= 5) {
+          return 25; // Moderate discount
+        } else {
+          return 10; // Small discount
+        }
+      };
+
       // Calculate scores for both products
       const scoreA = {
         expiringSoon: a.f_expiring_soon ? 1000 : 0, // Highest priority
@@ -266,6 +303,7 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
         isNew: a.f_is_new ? 200 : 0,
         highRotation: getHighRotationScore(a) * 50,
         priceFavorability: getPriceFavorabilityScore(a),
+        discount: getDiscountScore(a),
         hasStock: a.f_has_stock ? 50 : 0,
       };
 
@@ -276,6 +314,7 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
         isNew: b.f_is_new ? 200 : 0,
         highRotation: getHighRotationScore(b) * 50,
         priceFavorability: getPriceFavorabilityScore(b),
+        discount: getDiscountScore(b),
         hasStock: b.f_has_stock ? 50 : 0,
       };
 
@@ -283,15 +322,17 @@ export class PrismaSuggestionRepository implements SuggestionRepository {
       const totalA =
         scoreA.expiringSoon +
         scoreA.clientAffinity * 3 + // Highest weight for client affinity
-        scoreA.globalPopularity * 2 + // Second weight for global popularity
-        scoreA.isNew * 1.5 + // Third weight for new products
-        scoreA.highRotation * 1.2 + // Fourth weight for high rotation
-        scoreA.priceFavorability * 1 + // Fifth weight for price
+        scoreA.discount * 2.5 + // High weight for discounts (operational efficiency)
+        scoreA.globalPopularity * 2 + // Weight for global popularity
+        scoreA.isNew * 1.5 + // Weight for new products
+        scoreA.highRotation * 1.2 + // Weight for high rotation
+        scoreA.priceFavorability * 1 + // Weight for price
         scoreA.hasStock; // Base requirement
 
       const totalB =
         scoreB.expiringSoon +
         scoreB.clientAffinity * 3 +
+        scoreB.discount * 2.5 + // High weight for discounts (operational efficiency)
         scoreB.globalPopularity * 2 +
         scoreB.isNew * 1.5 +
         scoreB.highRotation * 1.2 +

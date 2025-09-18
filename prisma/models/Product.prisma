@@ -4,6 +4,8 @@ model Product {
   description  String?
   sku          String
   price        Decimal  @db.Decimal(10, 2)
+  discountedPrice Decimal?  @db.Decimal(10, 2)
+  discount     Decimal?  @db.Decimal(4, 2) // Max 99.99%
   distributorId String
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
