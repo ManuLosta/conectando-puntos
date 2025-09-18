@@ -3,34 +3,39 @@ import { chatModel } from "@/lib/ai/provider";
 import { whatsAppMessageService } from "@/services/whatsapp-message.service";
 import { userRepo } from "@/repositories/user.repository";
 import { tools } from "@/lib/ai/tools";
+import { WhatsAppFormattedMessage } from "@/services/whatsapp-formatter.service";
 
 const SYSTEM_PROMPT = `
-Eres un asistente de pedidos para vendedores de distribuidoras. Sé amable, colaborativo y usa 1–3 emojis cuando ayuden (sin exagerar). 😊🧾
+Eres un asistente de pedidos para vendedores de distribuidoras. Utiliza mensajes estructurados con formato WhatsApp apropiado.
 
-IMPORTANTE: Cuando presentes sugerencias de productos, SIEMPRE debes explicar el ranking y el motivo por el cual cada producto es sugerido y su posición en la lista. Ejemplos de motivos: "producto habitual del cliente", "expira pronto", "muy popular entre otros clientes", "nuevo en el catálogo", "stock limitado". El orden de los productos debe reflejar la prioridad de recomendación y debes justificar brevemente cada sugerencia.
+FORMATO DE RESPUESTA:
+- Usa *texto en negrita* para títulos importantes
+- Usa emojis estratégicamente (1-3 por mensaje)
+- Estructura con headers, body y acciones cuando sea necesario
+- Para confirmaciones SÍ/NO, siempre responde en formato JSON: {"requiresConfirmation": true, "message": "texto", "orderId": "id_opcional"}
+- Para otros mensajes, responde en formato JSON: {"message": "texto_formateado"} o usa el formatter service
+
+IMPORTANTE: Cuando presentes sugerencias de productos, SIEMPRE debes explicar el ranking y el motivo por el cual cada producto es sugerido y su posición en la lista. Los descuentos deben destacarse prominentemente.
 
 Entrada típica: "Cliente: items". Ej.: "Supermercado Don Pepe: 10 kg queso la serenisima".
 
 Flujo OBLIGATORIO:
-1) Valida el CLIENTE: llamá a listarClientes o buscarClientes (podés filtrar por el nombre). Si no existe, informá claramente: "No encontré el cliente <nombre>." y sugerí los más parecidos.
-2) APENAS IDENTIFIQUES UN CLIENTE VÁLIDO, INMEDIATAMENTE llamá a sugerirProductos para ese cliente. Esto es OBLIGATORIO y debe ser lo PRIMERO que hagas después de identificar el cliente.
-3) SIEMPRE presenta las sugerencias de productos al usuario de manera positiva, mencionando motivos como "productos habituales", "expiran pronto", "populares". Debes mostrar el ranking de sugerencias y explicar por qué cada producto ocupa su lugar en la lista (por ejemplo: "#1 porque es el más comprado por este cliente", "#2 porque expira pronto", "#3 porque es muy popular entre otros clientes"). Sugiere todos los productos posibles dentro de las alternativas y rankéalos con justificación.
-4) Luego, si el usuario mencionó productos específicos, identificá productos y cantidades y consultá stock con consultarStock.
-5) Si hay datos suficientes, creá ORDEN BORRADOR con crearOrden.
-6) ANTES de cerrar el resumen del borrador, VOLVÉ A RECOMENDAR entre 1–3 productos adicionales basándote en las sugerencias obtenidas.
-7) Respondé con un resumen amigable, por ejemplo:
-"🧾 Pedido para <cliente>\n- <cantidad> × <producto> (<sku>) — stock: <disp>\n➕ Te recomiendo también: <n> productos (ej.: <sku> <nombre> × <qty> — $<precio> - <motivo>)\n💰 Total estimado: $<total>\n🆔 Orden borrador: <orderId>\n¿Querés confirmarlo? (sí/no)"
-8) Si el usuario confirma ("sí", "ok", "confirmar"), llamá a confirmarOrden y reportá: "✅ Pedido confirmado: <orderId>".
+1) Valida el CLIENTE: llamá a listarClientes o buscarClientes. Si no existe, presenta opciones estructuradas.
+2) APENAS IDENTIFIQUES UN CLIENTE VÁLIDO, INMEDIATAMENTE llamá a sugerirProductos para ese cliente.
+3) SIEMPRE presenta las sugerencias de productos usando formato estructurado con ranking, precios y motivos claros.
+4) Para productos con descuento, usa: "🏷️ *X% OFF*" prominentemente.
+5) Si el usuario mencionó productos específicos, identificá productos y cantidades y consultá stock.
+6) Si hay datos suficientes, creá ORDEN BORRADOR con formato estructurado.
+7) ANTES de cerrar el resumen del borrador, VOLVÉ A RECOMENDAR productos adicionales.
+8) Para confirmaciones, usa SIEMPRE botones interactivos.
 
-Guías OBLIGATORIAS:
-- SIEMPRE que identifiques un cliente, inmediatamente llamá a sugerirProductos - NO es opcional.
-- Las recomendaciones deben ser POSITIVAS y ÚTILES, no opcionales.
-- Si un vendedor consulta información sobre un comercio, automáticamente buscá sugerencias para ese comercio.
-- Si faltan datos, pedí lo mínimo pero SIEMPRE mostrá sugerencias cuando haya un cliente identificado.
-- No inventes SKUs; usá solo los datos reales del stock.
-- Mantené respuestas breves, claras y con 1–3 emojis máximo.
+FORMATO DE RESPUESTAS:
+- Cliente no encontrado: Usar lista interactiva con opciones
+- Sugerencias: Usar lista interactiva con productos rankeados
+- Confirmaciones: Usar botones SÍ/NO
+- Resúmenes: Usar texto estructurado con negrita y emojis
 
-IMPORTANTE: La función sugerirProductos debe llamarse INMEDIATAMENTE después de identificar cualquier cliente, sin excusas ni demoras.
+Mantené respuestas claras, estructuradas y fáciles de leer en móvil.
 `;
 
 async function getDistributorFromPhone(phoneNumber: string): Promise<string> {
@@ -77,7 +82,8 @@ export async function runAgent({
 }: {
   phoneNumber: string;
   userText: string;
-}) {
+  interactionId?: string;
+}): Promise<WhatsAppFormattedMessage> {
   const trimmedText = userText.trim();
   if (!trimmedText || trimmedText.length < 2) {
     throw new Error("Message too short or empty");
@@ -144,7 +150,33 @@ export async function runAgent({
       );
     }
 
-    return assistantText || "Entendido.";
+    // Try to parse JSON response for structured formatting
+    try {
+      const jsonResponse = JSON.parse(assistantText);
+
+      if (jsonResponse.requiresConfirmation) {
+        // Import WhatsAppFormatterService here to avoid circular dependencies
+        const { WhatsAppFormatterService } = await import(
+          "@/services/whatsapp-formatter.service"
+        );
+        return WhatsAppFormatterService.createConfirmation(
+          jsonResponse.message,
+          jsonResponse.orderId,
+        );
+      }
+
+      if (jsonResponse.message) {
+        return { text: jsonResponse.message };
+      }
+    } catch {
+      // Not JSON, return as formatted text
+      const { WhatsAppFormatterService } = await import(
+        "@/services/whatsapp-formatter.service"
+      );
+      return { text: WhatsAppFormatterService.formatText(assistantText) };
+    }
+
+    return { text: assistantText || "Entendido." };
   } catch (error) {
     console.error("Error in runAgent:", error);
     throw error;
