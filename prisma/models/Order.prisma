@@ -40,6 +40,8 @@ model Order {
   distributor    Distributor   @relation(fields: [distributorId], references: [id])
   items          OrderItem[]
   stockMovements StockMovement[]
+  invoices       Invoice[]
+  deliveryNotes  DeliveryNote[]
 
   // Índices para optimización de queries
   @@index([distributorId, createdAt])

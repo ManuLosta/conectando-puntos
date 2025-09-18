@@ -16,6 +16,9 @@ model Distributor {
   clients          Client[]
   orders           Order[]
   whatsappSessions WhatsAppSession[]
+  invoices         Invoice[]
+  deliveryNotes    DeliveryNote[]
+  collections      Collection[]
 
   @@map("distributors")
 }
@@ -40,6 +43,8 @@ model Client {
   distributor         Distributor  @relation(fields: [distributorId], references: [id])
   assignedSalesperson Salesperson? @relation("AssignedSalesperson", fields: [assignedSalespersonId], references: [id])
   orders              Order[]
+  invoices            Invoice[]
+  deliveryNotes       DeliveryNote[]
 
   @@index([distributorId, createdAt])
   @@map("clients")
@@ -58,6 +63,7 @@ model Salesperson {
   distributor     Distributor @relation(fields: [distributorId], references: [id])
   orders          Order[]
   assignedClients Client[]    @relation("AssignedSalesperson")
+  collections     Collection[]
 
   @@map("salespeople")
 }
