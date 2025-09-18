@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/table";
 import { OrderDetailModal } from "./order-detail-modal";
 import { ConfirmationModal } from "./confirmation-modal";
-import toast from "react-hot-toast";
 
 interface Order {
   id: string;
@@ -295,22 +294,6 @@ export function OrdersTable({
         `Pedido ${confirmationModal.order.id} actualizado exitosamente a estado ${newStatus}`,
       );
 
-      // Mostrar notificación de éxito
-      const actionText =
-        confirmationModal.type === "confirm"
-          ? "confirmado"
-          : confirmationModal.type === "ship"
-            ? "enviado"
-            : "cancelado";
-      toast.success(`¡Pedido ${actionText} exitosamente!`, {
-        icon:
-          confirmationModal.type === "confirm"
-            ? "✅"
-            : confirmationModal.type === "ship"
-              ? "🚚"
-              : "❌",
-      });
-
       // Cerrar el modal
       setConfirmationModal({ isOpen: false, type: "confirm", order: null });
 
@@ -318,14 +301,8 @@ export function OrdersTable({
       window.location.reload();
     } catch (error) {
       console.error("Error al actualizar el pedido:", error);
-
-      // Mostrar notificación de error moderna
-      toast.error(
+      alert(
         `Error al actualizar el pedido: ${error instanceof Error ? error.message : "Error desconocido"}`,
-        {
-          icon: "⚠️",
-          duration: 6000,
-        },
       );
     }
   };

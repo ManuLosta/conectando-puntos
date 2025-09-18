@@ -9,7 +9,6 @@ import {
   UserCheckIcon,
   PackageIcon,
   BotIcon,
-  Package2Icon,
 } from "lucide-react";
 
 import { NavMain } from "@/components/sidebar/nav-main";
@@ -47,11 +46,6 @@ const data = {
       title: "Pedidos",
       url: "/dashboard/pedidos",
       icon: ShoppingCartIcon,
-    },
-    {
-      title: "Stock",
-      url: "/dashboard/stock",
-      icon: Package2Icon,
     },
     {
       title: "Cobranzas",

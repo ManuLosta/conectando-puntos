@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import {
   Dialog,
@@ -10,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -18,8 +15,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Plus,
+  Minus,
+  Search,
+  User,
+  Package,
+  MapPin,
+  FileText,
+  ShoppingCart,
+  X,
+  Calculator,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -28,19 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  User,
-  MapPin,
-  FileText,
-  Package,
-  Search,
-  Calculator,
-  ShoppingCart,
-  Plus,
-  Minus,
-  X,
-} from "lucide-react";
-import toast from "react-hot-toast";
 
 interface Product {
   id: string;
@@ -176,10 +173,7 @@ export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
     if (!selectedProduct || quantity <= 0) return;
 
     if (quantity > selectedProduct.stock) {
-      toast.error(`Stock insuficiente. Disponible: ${selectedProduct.stock}`, {
-        icon: "⚠️",
-        duration: 4000,
-      });
+      alert(`Stock insuficiente. Disponible: ${selectedProduct.stock}`);
       return;
     }
 
@@ -193,13 +187,7 @@ export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
       const newQuantity = updatedItems[existingItemIndex].quantity + quantity;
 
       if (newQuantity > selectedProduct.stock) {
-        toast.error(
-          `Stock insuficiente. Disponible: ${selectedProduct.stock}`,
-          {
-            icon: "⚠️",
-            duration: 4000,
-          },
-        );
+        alert(`Stock insuficiente. Disponible: ${selectedProduct.stock}`);
         return;
       }
 
@@ -237,10 +225,7 @@ export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
     if (!product) return;
 
     if (newQuantity > product.stock) {
-      toast.error(`Stock insuficiente. Disponible: ${product.stock}`, {
-        icon: "⚠️",
-        duration: 4000,
-      });
+      alert(`Stock insuficiente. Disponible: ${product.stock}`);
       return;
     }
 
