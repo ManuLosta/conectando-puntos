@@ -92,7 +92,7 @@ export default function ClientesPage() {
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-        <div className="flex items-center gap-2 px-4">
+        <div className="flex items-center gap-2 px-2 sm:px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
@@ -105,20 +105,17 @@ export default function ClientesPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="flex flex-col gap-4">
+      <div className="flex flex-1 flex-col gap-2 sm:gap-4 px-4 sm:px-8 py-2 sm:py-4">
+        <div className="flex flex-col gap-2 sm:gap-4">
           <ClientsPageClient>
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Lista de Clientes
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Clientes
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Gestiona tu cartera de clientes
-                </p>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 sm:px-8">
                 <Suspense fallback={<ClientsLoading />}>
                   <ClientsData />
                 </Suspense>

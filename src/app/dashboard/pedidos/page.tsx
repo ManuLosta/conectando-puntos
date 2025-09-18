@@ -119,27 +119,28 @@ function OrdersSection({
 }) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3 sm:pb-4">
         <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5" />
-            {title}
-            <Badge variant="secondary" className="ml-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-sm sm:text-base">{title}</span>
+            <Badge variant="secondary" className="ml-1 sm:ml-2 text-xs">
               {orders.length}
             </Badge>
           </div>
         </CardTitle>
-        <p className="text-sm text-muted-foreground">{description}</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-8">
         {orders.length > 0 ? (
           <Suspense fallback={<OrdersLoading />}>
             <OrdersClient orders={orders} showBulkActions={showBulkActions} />
           </Suspense>
         ) : (
-          <div className="text-center py-8">
-            <Icon className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">{emptyMessage}</p>
+          <div className="text-center py-6 sm:py-8">
+            <Icon className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground/50 mb-3 sm:mb-4" />
+            <p className="text-sm sm:text-base text-muted-foreground">
+              {emptyMessage}
+            </p>
           </div>
         )}
       </CardContent>
@@ -153,7 +154,7 @@ export default async function PedidosPage() {
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-        <div className="flex items-center gap-2 px-4">
+        <div className="flex items-center gap-2 px-2 sm:px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
@@ -166,29 +167,41 @@ export default async function PedidosPage() {
         </div>
       </header>
 
-      <div className="flex flex-1  mt-2 flex-col gap-4 p-4 pt-0">
-        <div className="flex flex-col gap-4">
+      <div className="flex flex-1 mt-1 sm:mt-2 flex-col gap-2 sm:gap-4 px-4 sm:px-8 py-2 sm:py-4">
+        <div className="flex flex-col gap-2 sm:gap-4">
           {/* Tabs para las 3 zonas */}
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="all" className="flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Todos los pedidos
-                <Badge variant="secondary" className="ml-1">
+          <Tabs defaultValue="all">
+            <TabsList className="grid w-full grid-cols-3 h-auto">
+              <TabsTrigger
+                value="all"
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2"
+              >
+                <Package className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Todos los pedidos</span>
+                <span className="sm:hidden">Todos</span>
+                <Badge variant="secondary" className="ml-1 text-xs">
                   {allOrders.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="pending" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Por confirmar
-                <Badge variant="secondary" className="ml-1">
+              <TabsTrigger
+                value="pending"
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2"
+              >
+                <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Por confirmar</span>
+                <span className="sm:hidden">Pendientes</span>
+                <Badge variant="secondary" className="ml-1 text-xs">
                   {pendingOrders.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="to-ship" className="flex items-center gap-2">
-                <Truck className="h-4 w-4" />
-                Por enviar
-                <Badge variant="secondary" className="ml-1">
+              <TabsTrigger
+                value="to-ship"
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2"
+              >
+                <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Por enviar</span>
+                <span className="sm:hidden">Enviar</span>
+                <Badge variant="secondary" className="ml-1 text-xs">
                   {ordersToShip.length}
                 </Badge>
               </TabsTrigger>

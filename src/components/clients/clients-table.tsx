@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Phone, Mail, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Eye,
+  Phone,
+  Mail,
+  TrendingUp,
+  TrendingDown,
+  Users,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -147,87 +154,97 @@ export function ClientsTable({ clients }: ClientsTableProps) {
   return (
     <>
       <div className="w-full">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="font-semibold">Cliente</TableHead>
-              <TableHead className="font-semibold">Tipo</TableHead>
-              <TableHead className="font-semibold">Última Compra</TableHead>
-              <TableHead className="font-semibold text-right">
-                Total Mes
-              </TableHead>
-              <TableHead className="font-semibold text-center">
-                Tendencia
-              </TableHead>
-              <TableHead className="font-semibold text-center">
-                Contacto
-              </TableHead>
-              <TableHead className="font-semibold text-center">
-                Acciones
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {clients.map((client) => (
-              <TableRow key={client.id} className="hover:bg-muted/50">
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{client.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {client.address}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {client.clientType || "Sin tipo"}
-                  </div>
-                </TableCell>
-                <TableCell>{formatDate(client.lastPurchase)}</TableCell>
-                <TableCell className="text-right font-medium">
-                  {formatCurrency(client.totalAmount)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {getTrendIcon(client.trend)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex gap-1 justify-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() =>
-                        window.open(`tel:${client.phone}`, "_self")
-                      }
-                    >
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() =>
-                        window.open(`mailto:${client.email}`, "_self")
-                      }
-                    >
-                      <Mail className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleViewClient(client)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+        {clients.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-semibold">Cliente</TableHead>
+                <TableHead className="font-semibold">Tipo</TableHead>
+                <TableHead className="font-semibold">Última Compra</TableHead>
+                <TableHead className="font-semibold text-right">
+                  Total Mes
+                </TableHead>
+                <TableHead className="font-semibold text-center">
+                  Tendencia
+                </TableHead>
+                <TableHead className="font-semibold text-center">
+                  Contacto
+                </TableHead>
+                <TableHead className="font-semibold text-center">
+                  Acciones
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {clients.map((client) => (
+                <TableRow key={client.id} className="hover:bg-muted/50">
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{client.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {client.address}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {client.clientType || "Sin tipo"}
+                    </div>
+                  </TableCell>
+                  <TableCell>{formatDate(client.lastPurchase)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(client.totalAmount)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {getTrendIcon(client.trend)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex gap-1 justify-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() =>
+                          window.open(`tel:${client.phone}`, "_self")
+                        }
+                      >
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() =>
+                          window.open(`mailto:${client.email}`, "_self")
+                        }
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleViewClient(client)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-8">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">No hay clientes registrados</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Comienza agregando tu primer cliente
+            </p>
+          </div>
+        )}
       </div>
 
       <ClientDetailModal

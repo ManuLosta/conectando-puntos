@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export type OrderStatus =
   | "PENDING"
@@ -575,7 +576,6 @@ export class OrderRepositoryImpl implements OrderRepository {
   }
 }
 
-const prisma = new PrismaClient();
 export const orderRepo = new OrderRepositoryImpl(prisma);
 
 // Export types with cleaner names
