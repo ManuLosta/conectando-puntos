@@ -2,27 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Package,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Plus,
-} from "lucide-react";
-import { StockService, StockItemWithProduct } from "@/services/stock.service";
+import { Package } from "lucide-react";
 
 export function StockList() {
-  const [stockItems, setStockItems] = useState<StockItemWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

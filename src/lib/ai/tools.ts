@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { tool } from "ai";
-import { catalogService } from "@/services/catalog.service";
 import { orderService } from "@/services/order.service";
 import { customerService } from "@/services/customer.service";
 import { stockService } from "@/services/stock.service";
