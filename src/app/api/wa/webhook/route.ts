@@ -206,17 +206,28 @@ async function processTextMessage(message: WhatsAppMessage): Promise<void> {
     // Mark as read and include typing indicator as per Cloud API
     await markReadWithTyping(message.id);
 
-    const response = await runAgent({
+    const responses = await runAgent({
       phoneNumber: normalizedTo,
       userText: userText,
       interactionId: interactionId,
     });
 
-    if (response && (response.text || response.interactive)) {
-      await sendWhatsAppMessage(normalizedTo, response);
-      console.log(
-        `Formatted message sent to ${normalizedTo}: ${response.text ? response.text.substring(0, 50) : "Interactive message"}...`,
-      );
+    if (responses && responses.length > 0) {
+      // Enviar múltiples mensajes con un pequeño delay entre ellos
+      for (let i = 0; i < responses.length; i++) {
+        const response = responses[i];
+        if (response && (response.text || response.interactive)) {
+          await sendWhatsAppMessage(normalizedTo, response);
+          console.log(
+            `Message ${i + 1}/${responses.length} sent to ${normalizedTo}: ${response.text ? response.text.substring(0, 50) : "Interactive message"}...`,
+          );
+
+          // Pequeño delay entre mensajes para evitar rate limiting
+          if (i < responses.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
+      }
     } else {
       console.log(`Empty response for message from ${from}, not sending`);
     }

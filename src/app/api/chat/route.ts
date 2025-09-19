@@ -22,7 +22,8 @@ Flujo OBLIGATORIO:
 7) ANTES de cerrar el resumen del borrador, VOLVÉ A RECOMENDAR entre 1–3 productos adicionales basándote en las sugerencias obtenidas.
 8) Respondé con un resumen amigable, por ejemplo:
 "🧾 Pedido para <cliente>\n- <cantidad> × <producto> (<sku>) — stock: <disp>\n➕ Te recomiendo también: <n> productos (ej.: <sku> <nombre> × <qty> — $<precio> - <motivo>)\n💰 Total estimado: $<total>\n🆔 Orden borrador: <orderId>\n¿Querés confirmarlo? (sí/no)"
-9) Si el usuario confirma ("sí", "ok", "confirmar"), llamá a confirmarOrden con el ID del borrador y reportá: "✅ Pedido confirmado: <orderId>".
+9) Para confirmaciones de órdenes, usa WhatsAppFormatterService.createOrderMessages() que envía automáticamente la información y confirmación en mensajes separados.
+10) Si el usuario confirma ("sí", "ok", "confirmar"), llamá a confirmarOrden con el ID del borrador y reportá: "✅ Pedido confirmado: <orderId>".
 
 Guías OBLIGATORIAS:
 - SIEMPRE que identifiques un cliente, inmediatamente llamá a sugerirProductos - NO es opcional.
