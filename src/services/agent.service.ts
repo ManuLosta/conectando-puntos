@@ -105,8 +105,9 @@ TIPOS DE RESPUESTA DISPONIBLES:
 FORMATO DE RESPUESTA:
 - Usa *texto en negrita* para títulos importantes
 - Usa emojis estratégicamente (1-3 por mensaje)
-- SIEMPRE responde con el tipo correcto según la situación
-- Para crear órdenes, usa tipo "order_creation" con todos los datos estructurados
+- NUNCA incluyas tags HTML, XML o <response_type> en tu respuesta
+- Responde en texto limpio y bien formateado
+- Para confirmaciones, usa texto directo sin etiquetas especiales
 
 IMPORTANTE: Cuando presentes sugerencias de productos, SIEMPRE debes explicar el ranking y el motivo por el cual cada producto es sugerido y su posición en la lista. Los descuentos deben destacarse prominentemente.
 
@@ -119,8 +120,9 @@ Flujo OBLIGATORIO:
 4) Para productos con descuento, usa: "🏷️ *X% OFF*" prominentemente.
 5) Si el usuario mencionó productos específicos, identificá productos y cantidades y consultá stock.
 6) Si hay datos suficientes, creá UNA SOLA ORDEN BORRADOR con crearOrden y GUARDA EL ID.
-7) NUNCA crees múltiples órdenes. Si ya creaste una orden borrador, usa confirmarOrden con ese mismo ID.
-8) Para confirmaciones de órdenes, usa WhatsAppFormatterService.createOrderMessages() que envía automáticamente la información y confirmación en mensajes separados.
+7) NUNCA crees múltiples órdenes para el mismo pedido. Una vez creada la orden borrador, solo confirmarla.
+8) Si el usuario dice "Sí", "✅ Sí", "confirmar" o similar, usa confirmarOrden con el ID de la orden borrador existente.
+9) Las confirmaciones SIEMPRE deben llegar como botones interactivos de WhatsApp, no como texto simple.
 
 FORMATO DE RESPUESTAS:
 - Cliente no encontrado: Usar lista interactiva con opciones
@@ -185,7 +187,13 @@ export async function runAgent({
       model: chatModel,
       system:
         SYSTEM_PROMPT +
-        "\n\nDespués de usar las tools necesarias, responde con el formato estructurado apropiado.",
+        `\n\nCONTEXTO ADICIONAL:
+- Teléfono: ${phoneNumber}
+- Si el usuario confirma con "Sí" o "✅ Sí", usa confirmarOrden con el ID de orden existente
+- NO crees nueva orden si el usuario está confirmando una existente
+- Las confirmaciones deben ser botones interactivos de WhatsApp
+
+Después de usar las tools necesarias, responde con el formato estructurado apropiado.`,
       messages: msgs,
       tools,
       stopWhen: stepCountIs(8),
@@ -234,32 +242,35 @@ export async function runAgent({
       model: chatModel,
       system: `Analiza si esta respuesta requiere formato estructurado o es conversación casual.
 
-CRITERIOS PARA ESTRUCTURADO:
-- Contiene información de órdenes/pedidos
-- Presenta sugerencias de productos
-- Muestra resultados de búsqueda de clientes
-- Solicita confirmaciones importantes
-- Presenta datos de inventario/stock
-- Se usaron herramientas de negocio
+IMPORTANTE: Solo usar estructurado para casos muy específicos.
 
-CRITERIOS PARA CASUAL:
-- Saludos simples
-- Conversación general
+CRITERIOS PARA ESTRUCTURADO (usar solo si es claramente uno de estos):
+- Respuesta contiene una orden COMPLETA con productos, precios y total (tipo: order_creation)
+- Presenta lista de sugerencias de productos con detalles técnicos (tipo: product_suggestions)
+- Muestra resultados de búsqueda de múltiples clientes (tipo: client_search)
+- Solicita confirmación de una orden específica (tipo: confirmation)
+- El texto contiene datos claramente tabulares o listas complejas
+
+CRITERIOS PARA CASUAL (usar en todos los otros casos):
+- Saludos, conversación general
+- Mensajes de error o problemas
 - Preguntas informativas
-- Respuestas de ayuda general`,
+- Confirmaciones simples
+- Textos que ya están bien formateados
+- Respuestas que contienen <response_type> o tags HTML`,
       messages: [
         {
           role: "user",
-          content: `Respuesta del asistente: "${responseText}"\nSe usaron herramientas: ${toolsWereUsed ? "Sí" : "No"}\n\n¿Requiere formato estructurado?`,
+          content: `Respuesta: "${responseText}"\nHerramientas usadas: ${toolsWereUsed ? "Sí" : "No"}\n\n¿Necesita estructura compleja?`,
         },
       ],
       schema: z.object({
         needsStructured: z
           .boolean()
           .describe(
-            "true si requiere formato estructurado, false si es conversación casual",
+            "true SOLO si necesita formato WhatsApp estructurado complejo",
           ),
-        reason: z.string().describe("Breve explicación del por qué"),
+        reason: z.string().describe("Breve razón"),
       }),
     });
 
