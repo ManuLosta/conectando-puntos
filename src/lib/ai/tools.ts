@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { tool } from "ai";
-import { catalogService } from "@/services/catalog.service";
 import { orderService } from "@/services/order.service";
 import { customerService } from "@/services/customer.service";
 import { stockService } from "@/services/stock.service";
@@ -8,63 +7,81 @@ import { suggestionService } from "@/services/suggestion.service";
 // import { suggestionService } from "@/services/suggestion.service";
 
 export const buscarProductos = tool({
-  description:
-    "Busca productos por palabra clave o SKU en el catálogo de la distribuidora.",
-  inputSchema: z.object({
-    keyword: z
-      .string()
-      .describe("Palabra clave para buscar productos por nombre o SKU"),
-  }),
-  execute: async ({ keyword }, { experimental_context }) => {
-    const { distributorId } = experimental_context as {
-      distributorId: string;
-      phoneNumber: string;
-      salespersonId: string;
-    };
-    return catalogService.searchProductsByKeyword(distributorId, keyword);
-  },
-});
-
-export const consultarStock = tool({
-  description:
-    "Consulta stock de productos por búsqueda de texto o SKU. Puede buscar múltiples productos separados por comas.",
-  inputSchema: z.object({
-    query: z.string().describe("Texto de búsqueda para productos"),
-  }),
+  description: "Busca productos en el inventario de la distribuidora.",
+  inputSchema: z
+    .object({
+      query: z.string().describe("Texto de búsqueda para productos"),
+    })
+    .strict(),
   execute: async ({ query }, { experimental_context }) => {
     const { distributorId } = experimental_context as {
       distributorId: string;
       phoneNumber: string;
       salespersonId: string;
     };
-    return stockService.searchForDistributor(distributorId, query);
+    // Por ahora, obtenemos todos los productos y filtramos por query
+    const allStockResult =
+      await stockService.getAllStockByDistributor(distributorId);
+    const allStock = Array.isArray(allStockResult)
+      ? allStockResult
+      : allStockResult.items;
+    const filteredStock = allStock.filter(
+      (item) =>
+        item.product.name.toLowerCase().includes(query.toLowerCase()) ||
+        item.product.sku.toLowerCase().includes(query.toLowerCase()),
+    );
+    return filteredStock;
+  },
+});
+
+export const consultarStock = tool({
+  description:
+    "Consulta stock de productos por búsqueda de texto o SKU. Puede buscar múltiples productos separados por comas.",
+  inputSchema: z
+    .object({
+      query: z.string().describe("Texto de búsqueda para productos"),
+    })
+    .strict(),
+  execute: async ({ query }, { experimental_context }) => {
+    const { distributorId } = experimental_context as {
+      distributorId: string;
+      phoneNumber: string;
+      salespersonId: string;
+    };
+    return stockService.searchStock(distributorId, query);
   },
 });
 
 export const crearOrden = tool({
   description:
     "Crea una orden completa para un cliente específico con validación de stock.",
-  inputSchema: z.object({
-    clientId: z.string().describe("ID del cliente para quien se crea la orden"),
-    items: z
-      .array(
-        z.object({
-          sku: z.string().describe("SKU del producto"),
-          quantity: z
-            .number()
-            .int()
-            .positive()
-            .describe("Cantidad del producto"),
-        }),
-      )
-      .min(1)
-      .describe("Lista de productos y cantidades"),
-    deliveryAddress: z
-      .string()
-      .optional()
-      .describe("Dirección de entrega (opcional)"),
-    notes: z.string().optional().describe("Notas adicionales (opcional)"),
-  }),
+  inputSchema: z
+    .object({
+      clientId: z
+        .string()
+        .describe("ID del cliente para quien se crea la orden"),
+      items: z
+        .array(
+          z
+            .object({
+              sku: z.string().describe("SKU del producto"),
+              quantity: z
+                .number()
+                .int()
+                .positive()
+                .describe("Cantidad del producto"),
+            })
+            .strict(),
+        )
+        .min(1)
+        .describe("Lista de productos y cantidades"),
+      deliveryAddress: z
+        .string()
+        .optional()
+        .describe("Dirección de entrega (opcional)"),
+      notes: z.string().optional().describe("Notas adicionales (opcional)"),
+    })
+    .strict(),
   execute: async (
     { clientId, items, deliveryAddress, notes },
     { experimental_context },
@@ -88,9 +105,11 @@ export const crearOrden = tool({
 export const confirmarOrden = tool({
   description:
     "Confirma una orden existente por ID y descuenta el stock correspondiente.",
-  inputSchema: z.object({
-    orderId: z.string().describe("ID de la orden a confirmar"),
-  }),
+  inputSchema: z
+    .object({
+      orderId: z.string().describe("ID de la orden a confirmar"),
+    })
+    .strict(),
   execute: async ({ orderId }) => {
     const order = await orderService.confirmOrder(orderId);
     if (!order) {
@@ -103,18 +122,25 @@ export const confirmarOrden = tool({
 export const sugerirProductos = tool({
   description:
     "Sugiere productos para vender más: expiran pronto o habituales del cliente.",
-  inputSchema: z.object({
-    clientId: z.string().describe("ID del cliente para sugerencias"),
-    asOf: z
-      .string()
-      .optional()
-      .describe(
-        "Fecha de referencia para las sugerencias (formato ISO string, ej: 2024-01-01T00:00:00Z)",
-      ),
-    top: z
-      .optional(z.number().int().min(1).max(100).default(10))
-      .describe("Número máximo de productos a sugerir (por defecto 10)"),
-  }),
+  inputSchema: z
+    .object({
+      clientId: z.string().describe("ID del cliente para sugerencias"),
+      asOf: z
+        .string()
+        .optional()
+        .describe(
+          "Fecha de referencia para las sugerencias (formato ISO string, ej: 2024-01-01T00:00:00Z)",
+        ),
+      top: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(10)
+        .optional()
+        .describe("Número máximo de productos a sugerir (por defecto 10)"),
+    })
+    .strict(),
   execute: async ({ clientId, asOf, top }, { experimental_context }) => {
     const { distributorId } = experimental_context as {
       distributorId: string;
@@ -134,12 +160,14 @@ export const sugerirProductos = tool({
 
 export const listarClientes = tool({
   description: "Lista todos los clientes de la distribuidora del vendedor.",
-  inputSchema: z.object({
-    query: z
-      .string()
-      .optional()
-      .describe("Filtro opcional de búsqueda por nombre"),
-  }),
+  inputSchema: z
+    .object({
+      query: z
+        .string()
+        .optional()
+        .describe("Filtro opcional de búsqueda por nombre"),
+    })
+    .strict(),
   execute: async ({ query }, { experimental_context }) => {
     const { distributorId } = experimental_context as {
       distributorId: string;
@@ -158,9 +186,11 @@ export const listarClientes = tool({
 export const buscarClientes = tool({
   description:
     "Busca clientes por nombre o email en la distribuidora del vendedor.",
-  inputSchema: z.object({
-    query: z.string().describe("Texto de búsqueda para clientes"),
-  }),
+  inputSchema: z
+    .object({
+      query: z.string().describe("Texto de búsqueda para clientes"),
+    })
+    .strict(),
   execute: async ({ query }, { experimental_context }) => {
     const { distributorId } = experimental_context as {
       distributorId: string;
@@ -173,9 +203,11 @@ export const buscarClientes = tool({
 
 export const obtenerOrden = tool({
   description: "Obtiene una orden por su ID.",
-  inputSchema: z.object({
-    orderId: z.string().describe("ID de la orden"),
-  }),
+  inputSchema: z
+    .object({
+      orderId: z.string().describe("ID de la orden"),
+    })
+    .strict(),
   execute: async ({ orderId }) => {
     return orderService.getOrderById(orderId);
   },

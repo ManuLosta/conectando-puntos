@@ -5,7 +5,6 @@ import {
   WhatsAppFormattedResponse,
 } from "@/types/whatsapp";
 import { runAgent } from "@/services/agent.service";
-import { WhatsAppFormattedMessage } from "@/services/whatsapp-formatter.service";
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN!;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
@@ -21,24 +20,12 @@ function normalizePhoneNumber(phoneNumber: string): string {
   return phoneNumber;
 }
 
-function createWhatsAppResponse(
-  to: string,
-  formattedMessage: WhatsAppFormattedMessage,
-): WhatsAppFormattedResponse {
-  if (formattedMessage.interactive) {
-    return {
-      messaging_product: "whatsapp",
-      to: to,
-      type: "interactive",
-      interactive: formattedMessage.interactive,
-    };
-  }
-
+function createWhatsAppResponse(to: string, message: string) {
   return {
     messaging_product: "whatsapp",
     to: to,
     type: "text",
-    text: { body: formattedMessage.text || "" },
+    text: { body: message },
   };
 }
 
@@ -73,7 +60,7 @@ async function markReadWithTyping(messageId: string): Promise<void> {
 
 async function sendWhatsAppMessage(
   to: string,
-  formattedMessage: WhatsAppFormattedMessage,
+  message: string,
 ): Promise<unknown> {
   const url = `https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`;
 
@@ -84,7 +71,7 @@ async function sendWhatsAppMessage(
         Authorization: `Bearer ${WHATSAPP_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(createWhatsAppResponse(to, formattedMessage)),
+      body: JSON.stringify(createWhatsAppResponse(to, message)),
     });
 
     if (!response.ok) {
@@ -157,23 +144,12 @@ function extractMessages(body: WhatsAppWebhookBody): WhatsAppMessage[] {
 }
 
 async function processTextMessage(message: WhatsAppMessage): Promise<void> {
-  // Handle interactive message responses
-  let userText = "";
-  let interactionId = "";
-
-  if (message.type === "interactive") {
-    if (message.interactive?.button_reply) {
-      userText = message.interactive.button_reply.title;
-      interactionId = message.interactive.button_reply.id;
-    } else if (message.interactive?.list_reply) {
-      userText = message.interactive.list_reply.title;
-      interactionId = message.interactive.list_reply.id;
-    }
-  } else if (message.type === "text" && message.text?.body) {
-    userText = message.text.body.trim();
-  }
-
-  if (!message.from || !userText || !message.id) {
+  if (
+    message.type !== "text" ||
+    !message.from ||
+    !message.text?.body ||
+    !message.id
+  ) {
     return;
   }
 
@@ -184,9 +160,10 @@ async function processTextMessage(message: WhatsAppMessage): Promise<void> {
   }
 
   const from = message.from;
+  const text = message.text.body.trim();
 
   // Validar que el mensaje no esté vacío
-  if (!userText || userText.length === 0) {
+  if (!text || text.length === 0) {
     console.log(`Empty message from ${from}, skipping`);
     return;
   }
@@ -208,14 +185,13 @@ async function processTextMessage(message: WhatsAppMessage): Promise<void> {
 
     const response = await runAgent({
       phoneNumber: normalizedTo,
-      userText: userText,
-      interactionId: interactionId,
+      userText: text,
     });
 
-    if (response && (response.text || response.interactive)) {
+    if (response && response.trim().length > 0) {
       await sendWhatsAppMessage(normalizedTo, response);
       console.log(
-        `Formatted message sent to ${normalizedTo}: ${response.text ? response.text.substring(0, 50) : "Interactive message"}...`,
+        `Message sent to ${normalizedTo}: "${response.substring(0, 50)}..."`,
       );
     } else {
       console.log(`Empty response for message from ${from}, not sending`);

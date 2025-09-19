@@ -184,9 +184,6 @@ export function OrderDetailModal({
               <DialogTitle className="text-2xl font-semibold">
                 <Skeleton className="h-8 w-64" />
               </DialogTitle>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </DialogHeader>
 
@@ -271,9 +268,6 @@ export function OrderDetailModal({
             <DialogTitle className="text-2xl font-semibold">
               Detalle del Pedido {order.orderNumber}
             </DialogTitle>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </DialogHeader>
 
