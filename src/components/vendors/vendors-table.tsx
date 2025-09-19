@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Phone, Mail } from "lucide-react";
+import { Eye, Phone, Mail, UserCheck } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -144,68 +144,80 @@ export function VendorsTable({ vendors }: VendorsTableProps) {
   return (
     <>
       <div className="w-full">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="font-semibold">Nombre</TableHead>
-              <TableHead className="font-semibold">Contacto</TableHead>
-              <TableHead className="font-semibold">Última Venta</TableHead>
-              <TableHead className="font-semibold text-right">
-                Total Vendido
-              </TableHead>
-              <TableHead className="font-semibold text-center">
-                Estado
-              </TableHead>
-              <TableHead className="font-semibold text-center">
-                Acciones
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vendors.map((vendor) => (
-              <TableRow key={vendor.id} className="hover:bg-muted/50">
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{vendor.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {vendor.clientsCount} cliente
-                      {vendor.clientsCount !== 1 ? "s" : ""}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1 text-sm">
-                      <Phone className="h-3 w-3 text-muted-foreground" />
-                      {vendor.phone}
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Mail className="h-3 w-3 text-muted-foreground" />
-                      {vendor.email}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{formatDate(vendor.lastSale)}</TableCell>
-                <TableCell className="text-right font-medium">
-                  {formatCurrency(vendor.totalSold)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {getStatusBadge(vendor.status)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleViewVendor(vendor)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+        {vendors.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-semibold">Nombre</TableHead>
+                <TableHead className="font-semibold">Contacto</TableHead>
+                <TableHead className="font-semibold">Última Venta</TableHead>
+                <TableHead className="font-semibold text-right">
+                  Total Vendido
+                </TableHead>
+                <TableHead className="font-semibold text-center">
+                  Estado
+                </TableHead>
+                <TableHead className="font-semibold text-center">
+                  Acciones
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {vendors.map((vendor) => (
+                <TableRow key={vendor.id} className="hover:bg-muted/50">
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{vendor.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {vendor.clientsCount} cliente
+                        {vendor.clientsCount !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 text-sm">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        {vendor.phone}
+                      </div>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        {vendor.email}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{formatDate(vendor.lastSale)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(vendor.totalSold)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {getStatusBadge(vendor.status)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleViewVendor(vendor)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-8">
+            <UserCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              No hay vendedores registrados
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Comienza agregando tu primer vendedor
+            </p>
+          </div>
+        )}
       </div>
 
       <VendorDetailModal

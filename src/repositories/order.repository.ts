@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export type OrderStatus =
   | "PENDING"
@@ -55,6 +56,14 @@ export interface OrderWithItems {
   }>;
 }
 
+export interface ClientOrderStats {
+  totalOrders: number;
+  totalAmount: number;
+  monthlyAmount: number;
+  lastOrderDate: Date | null;
+  recentOrders: OrderWithItems[];
+}
+
 export interface OrderRepository {
   createOrder(orderData: CreateOrderInput): Promise<OrderWithItems>;
   findById(id: string): Promise<OrderWithItems | null>;
@@ -72,6 +81,15 @@ export interface OrderRepository {
     orderIds: string[],
     status: OrderStatus,
   ): Promise<{ success: boolean; count: number }>;
+  getClientOrderStats(
+    distributorId: string,
+    clientId: string,
+  ): Promise<ClientOrderStats>;
+  getClientOrders(
+    distributorId: string,
+    clientId: string,
+    limit?: number,
+  ): Promise<OrderWithItems[]>;
 }
 
 export class OrderRepositoryImpl implements OrderRepository {
@@ -447,9 +465,117 @@ export class OrderRepositoryImpl implements OrderRepository {
       return { success: false, count: 0 };
     }
   }
+
+  async getClientOrderStats(
+    distributorId: string,
+    clientId: string,
+  ): Promise<ClientOrderStats> {
+    // Get current month start date
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get all orders for the client
+    const orders = await this.prisma.order.findMany({
+      where: {
+        distributorId,
+        clientId,
+      },
+      select: {
+        id: true,
+        total: true,
+        createdAt: true,
+        status: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Calculate stats
+    const totalOrders = orders.length;
+    const totalAmount = orders.reduce(
+      (sum, order) => sum + Number(order.total),
+      0,
+    );
+
+    // Calculate monthly amount (current month)
+    const monthlyOrders = orders.filter(
+      (order) => order.createdAt >= currentMonthStart,
+    );
+    const monthlyAmount = monthlyOrders.reduce(
+      (sum, order) => sum + Number(order.total),
+      0,
+    );
+
+    // Get last order date
+    const lastOrderDate = orders.length > 0 ? orders[0].createdAt : null;
+
+    // Get recent orders (last 5) with full details
+    const recentOrders = await this.getClientOrders(distributorId, clientId, 5);
+
+    return {
+      totalOrders,
+      totalAmount,
+      monthlyAmount,
+      lastOrderDate,
+      recentOrders,
+    };
+  }
+
+  async getClientOrders(
+    distributorId: string,
+    clientId: string,
+    limit?: number,
+  ): Promise<OrderWithItems[]> {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        distributorId,
+        clientId,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                sku: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      ...(limit && { take: limit }),
+    });
+
+    return orders.map((order) => ({
+      id: order.id,
+      distributorId: order.distributorId,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      total: Number(order.total),
+      clientId: order.clientId,
+      salespersonId: order.salespersonId,
+      deliveryAddress: order.deliveryAddress,
+      notes: order.notes,
+      createdAt: order.createdAt,
+      items: order.items?.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+        subtotal: Number(item.subtotal),
+        product: {
+          name: item.product.name,
+          sku: item.product.sku,
+        },
+      })),
+    }));
+  }
 }
 
-const prisma = new PrismaClient();
 export const orderRepo = new OrderRepositoryImpl(prisma);
 
 // Export types with cleaner names

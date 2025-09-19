@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export interface UserRepository {
   getSalespersonDistributor(salespersonId: string): Promise<string | null>;
@@ -45,5 +46,4 @@ export class PrismaUserRepository implements UserRepository {
   }
 }
 
-const prisma = new PrismaClient();
 export const userRepo = new PrismaUserRepository(prisma);
