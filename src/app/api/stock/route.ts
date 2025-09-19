@@ -209,24 +209,33 @@ export async function POST(request: NextRequest) {
           price,
           discountedPrice,
           discount,
-        }: CreateProductData = body;
+          distributorId, // Agregar distributorId como requerido
+        }: CreateProductData & { distributorId: string } = body;
 
         // Validar datos requeridos
-        if (!name || !sku || !price) {
+        if (!name || !sku || !price || !distributorId) {
           return NextResponse.json(
-            { error: "name, sku, and price are required" },
+            { error: "name, sku, price, and distributorId are required" },
             { status: 400 },
           );
         }
 
-        // Verificar si el SKU ya existe
+        // Verificar si el SKU ya existe para este distribuidor
         const existingProduct = await prisma.product.findUnique({
-          where: { sku },
+          where: {
+            sku_distributorId: {
+              sku,
+              distributorId,
+            },
+          },
         });
 
         if (existingProduct) {
           return NextResponse.json(
-            { error: "Product with this SKU already exists" },
+            {
+              error:
+                "Product with this SKU already exists for this distributor",
+            },
             { status: 400 },
           );
         }
@@ -240,6 +249,7 @@ export async function POST(request: NextRequest) {
             price,
             discountedPrice,
             discount,
+            distributorId,
             isActive: true,
           },
         });
@@ -280,10 +290,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Validar que la distribuidora existe
-        const distributor = await prisma.user.findUnique({
+        const distributor = await prisma.distributor.findUnique({
           where: {
             id: distributorId,
-            role: "DISTRIBUTOR",
           },
         });
 

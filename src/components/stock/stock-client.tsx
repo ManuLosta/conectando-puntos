@@ -42,12 +42,14 @@ interface StockItem {
 
 interface StockClientProps {
   stockItems: StockItem[];
+  distributorId: string;
   showBulkActions?: boolean;
   stockType?: "all" | "low" | "expiring";
 }
 
 export function StockClient({
   stockItems: initialStockItems,
+  distributorId,
   showBulkActions = false,
   stockType = "all",
 }: StockClientProps) {
@@ -238,6 +240,7 @@ export function StockClient({
 
         <StockTable
           stockItems={stockItems}
+          distributorId={distributorId}
           showBulkActions={showBulkActions}
           selectedItems={selectedItems}
           onItemSelectionChange={handleItemSelection}
@@ -267,7 +270,7 @@ export function StockClient({
         isOpen={isNewStockModalOpen}
         onClose={() => setIsNewStockModalOpen(false)}
         onStockCreated={handleStockUpdated}
-        distributorId="TEMP_DISTRIBUTOR_ID" // TODO: Obtener del contexto o props
+        distributorId={distributorId}
       />
     </div>
   );
