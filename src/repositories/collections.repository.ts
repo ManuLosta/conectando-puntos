@@ -35,9 +35,57 @@ export interface InvoiceCollection {
   montoPagado: number;
 }
 
+export interface CreateCollectionData {
+  collectionNumber: string;
+  invoiceId: string;
+  amountPaid: number;
+  paymentType: string;
+  notes?: string;
+  collectionDate: Date;
+  status: string;
+}
+
+export interface UpdateCollectionData {
+  status?: string;
+  notes?: string;
+  amountPaid?: number;
+  paymentType?: string;
+}
+
+export interface CollectionDetails {
+  id: string;
+  collectionNumber: string;
+  invoiceId: string;
+  amountPaid: number;
+  paymentType: string;
+  notes?: string;
+  collectionDate: Date;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CollectionsRepository {
   getCollectionsMetrics(distributorId: string): Promise<CollectionsMetrics>;
   getInvoicesForCollection(distributorId: string): Promise<InvoiceCollection[]>;
+  createCollection(data: CreateCollectionData): Promise<CollectionDetails>;
+  updateCollection(
+    id: string,
+    data: UpdateCollectionData,
+  ): Promise<CollectionDetails>;
+  getCollectionById(id: string): Promise<CollectionDetails | null>;
+  getCollectionsByInvoice(invoiceId: string): Promise<CollectionDetails[]>;
+  getCollectionHistory(
+    distributorId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<CollectionDetails[]>;
+  getCollectionStats(distributorId: string): Promise<{
+    totalCollected: number;
+    pendingAmount: number;
+    successRate: number;
+    averageCollectionTime: number;
+  }>;
 }
 
 class CollectionsRepositoryImpl implements CollectionsRepository {
@@ -201,6 +249,81 @@ class CollectionsRepositoryImpl implements CollectionsRepository {
         montoPagado,
       };
     });
+  }
+
+  async createCollection(
+    data: CreateCollectionData,
+  ): Promise<CollectionDetails> {
+    // For now, return a mock implementation until the Collection model is ready
+    const mockCollection: CollectionDetails = {
+      id: `col-${Date.now()}`,
+      collectionNumber: data.collectionNumber,
+      invoiceId: data.invoiceId,
+      amountPaid: data.amountPaid,
+      paymentType: data.paymentType,
+      notes: data.notes,
+      collectionDate: data.collectionDate,
+      status: data.status,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return mockCollection;
+  }
+
+  async updateCollection(
+    id: string,
+    data: UpdateCollectionData,
+  ): Promise<CollectionDetails> {
+    // For now, return a mock implementation
+    const mockCollection: CollectionDetails = {
+      id,
+      collectionNumber: `COL-${id}`,
+      invoiceId: "mock-invoice",
+      amountPaid: data.amountPaid || 0,
+      paymentType: data.paymentType || "CASH",
+      notes: data.notes,
+      collectionDate: new Date(),
+      status: data.status || "PENDING",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return mockCollection;
+  }
+
+  async getCollectionById(id: string): Promise<CollectionDetails | null> {
+    // For now, return null until the Collection model is ready
+    return null;
+  }
+
+  async getCollectionsByInvoice(
+    invoiceId: string,
+  ): Promise<CollectionDetails[]> {
+    // For now, return empty array until the Collection model is ready
+    return [];
+  }
+
+  async getCollectionHistory(
+    distributorId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<CollectionDetails[]> {
+    // For now, return empty array until the Collection model is ready
+    return [];
+  }
+
+  async getCollectionStats(distributorId: string): Promise<{
+    totalCollected: number;
+    pendingAmount: number;
+    successRate: number;
+    averageCollectionTime: number;
+  }> {
+    // For now, return mock stats until the Collection model is ready
+    return {
+      totalCollected: 0,
+      pendingAmount: 0,
+      successRate: 0,
+      averageCollectionTime: 0,
+    };
   }
 }
 

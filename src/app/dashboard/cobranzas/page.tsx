@@ -24,7 +24,6 @@ import {
   Clock,
   CheckCircle,
   DollarSign,
-  Plus,
   Search,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";

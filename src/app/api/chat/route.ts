@@ -38,7 +38,20 @@ export async function POST(req: Request) {
   const { messages, phone }: { messages: UIMessage[]; phone?: string } =
     await req.json();
 
-  const phoneNumber = phone || "+5491136608202";
+  // Require phone number to be provided
+  if (!phone || phone === null) {
+    return new Response(
+      JSON.stringify({
+        error: "Phone number is required. Please select a salesperson.",
+      }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  const phoneNumber = phone;
 
   try {
     // Get distributor ID and salesperson info for this phone number
