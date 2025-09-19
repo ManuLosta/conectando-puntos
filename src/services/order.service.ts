@@ -12,6 +12,13 @@ export interface OrderService {
     deliveryAddress?: string,
     notes?: string,
   ): Promise<OrderWithItems>;
+  createOrderForClient(
+    distributorId: string,
+    clientId: string,
+    items: { sku: string; quantity: number }[],
+    deliveryAddress?: string,
+    notes?: string,
+  ): Promise<OrderWithItems>;
   confirmOrder(orderId: string): Promise<OrderWithItems | null>;
   getOrderById(orderId: string): Promise<OrderWithItems | null>;
   getOrderByNumber(orderNumber: string): Promise<OrderWithItems | null>;
@@ -78,17 +85,77 @@ class OrderServiceImpl implements OrderService {
     return orderRepo.createOrder(orderData);
   }
 
+  async createOrderForClient(
+    distributorId: string,
+    clientId: string,
+    items: { sku: string; quantity: number }[],
+    deliveryAddress?: string,
+    notes?: string,
+  ) {
+    if (!distributorId) {
+      throw new Error(`Distribuidora no especificada`);
+    }
+
+    const orderItems = await Promise.all(
+      items.map(async (item) => {
+        const product = await stockRepo.getBySkuForDistributor(
+          distributorId,
+          item.sku,
+        );
+        if (!product) {
+          throw new Error(`Producto no encontrado: ${item.sku}`);
+        }
+        if (product.stock < item.quantity) {
+          throw new Error(
+            `Stock insuficiente para ${item.sku}. Disponible: ${product.stock}, solicitado: ${item.quantity}`,
+          );
+        }
+
+        return {
+          productId: product.id,
+          sku: product.sku,
+          quantity: item.quantity,
+          price: product.price,
+        };
+      }),
+    );
+
+    const orderData = {
+      clientId: clientId,
+      salespersonId: null, // No salesperson for direct client orders
+      distributorId,
+      items: orderItems,
+      deliveryAddress,
+      notes,
+    };
+
+    return orderRepo.createOrder(orderData);
+  }
+
   async confirmOrder(orderId: string) {
     const order = await orderRepo.findById(orderId);
     if (!order) return null;
 
-    const distributorId = await userRepo.getSalespersonDistributor(
-      order.salespersonId!,
-    );
-    if (!distributorId) {
-      throw new Error(
-        `No se encontró distribuidora para el vendedor ${order.salespersonId}`,
+    let distributorId: string | null = null;
+
+    if (order.salespersonId) {
+      // Order created by salesperson
+      distributorId = await userRepo.getSalespersonDistributor(
+        order.salespersonId,
       );
+      if (!distributorId) {
+        throw new Error(
+          `No se encontró distribuidora para el vendedor ${order.salespersonId}`,
+        );
+      }
+    } else {
+      // Order created directly by client
+      distributorId = order.distributorId;
+      if (!distributorId) {
+        throw new Error(
+          `No se encontró distribuidora para la orden ${orderId}`,
+        );
+      }
     }
 
     for (const item of order.items) {

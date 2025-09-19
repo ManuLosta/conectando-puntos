@@ -5,6 +5,10 @@ export interface UserRepository {
   getSalespersonDistributor(salespersonId: string): Promise<string | null>;
   getSalespersonDistributorByPhone(phone: string): Promise<string | null>;
   getSalespersonIdByPhone(phone: string): Promise<string | null>;
+  getClientByPhone(
+    phone: string,
+  ): Promise<{ id: string; distributorId: string } | null>;
+  isClientPhone(phone: string): Promise<boolean>;
 }
 
 export class PrismaUserRepository implements UserRepository {
@@ -43,6 +47,27 @@ export class PrismaUserRepository implements UserRepository {
     });
 
     return salesperson?.id || null;
+  }
+
+  async getClientByPhone(
+    phone: string,
+  ): Promise<{ id: string; distributorId: string } | null> {
+    const client = await this.prisma.client.findFirst({
+      where: {
+        phone: phone,
+      },
+      select: {
+        id: true,
+        distributorId: true,
+      },
+    });
+
+    return client || null;
+  }
+
+  async isClientPhone(phone: string): Promise<boolean> {
+    const client = await this.getClientByPhone(phone);
+    return client !== null;
   }
 }
 
