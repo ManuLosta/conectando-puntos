@@ -514,36 +514,40 @@ export class StockService {
     query: string,
   ): Promise<StockItemWithProduct[]> {
     try {
-      // Dividir la query en palabras individuales y limpiar
-      const searchTerms = query
-        .trim()
-        .toLowerCase()
-        .split(/\s+/) // Dividir por espacios
-        .filter((term) => term.length > 0) // Filtrar términos vacíos
-        .map((term) => term.replace(/[^\w\s]/g, "")); // Remover caracteres especiales
+      const cleanQuery = query.trim();
 
-      if (searchTerms.length === 0) {
+      if (cleanQuery.length === 0) {
         return [];
       }
 
-      // Construir condiciones OR para cada término de búsqueda
-      const searchConditions = searchTerms.map((term) => ({
+      // Dividir por comas para manejar múltiples productos
+      const productQueries = cleanQuery
+        .split(",")
+        .map((q) => q.trim())
+        .filter((q) => q.length > 0);
+
+      if (productQueries.length === 0) {
+        return [];
+      }
+
+      // Crear condiciones OR para cada producto buscado
+      const searchConditions = productQueries.map((productQuery) => ({
         OR: [
           {
             name: {
-              contains: term,
+              contains: productQuery,
               mode: "insensitive" as const,
             },
           },
           {
             sku: {
-              contains: term,
+              contains: productQuery,
               mode: "insensitive" as const,
             },
           },
           {
             description: {
-              contains: term,
+              contains: productQuery,
               mode: "insensitive" as const,
             },
           },
@@ -555,8 +559,8 @@ export class StockService {
           distributorId: distributorId,
           product: {
             isActive: true,
-            // Todas las condiciones de búsqueda deben cumplirse (AND)
-            AND: searchConditions,
+            // Buscar productos que coincidan con cualquiera de las consultas
+            OR: searchConditions,
           },
         },
         include: {
