@@ -76,6 +76,120 @@ function extractTextContent(content: unknown): string {
   return "";
 }
 
+function separateTextAndJson(text: string): {
+  cleanText: string;
+  jsonData?: Record<string, unknown>;
+} {
+  try {
+    // Primero intentar parsear todo el texto como JSON
+    const fullJson = JSON.parse(text);
+    return { cleanText: "", jsonData: fullJson };
+  } catch {
+    // Si no es JSON puro, buscar JSON mezclado con texto
+  }
+
+  // 1. Buscar patrón específico: texto seguido de JSON al final
+  // Buscar desde la última aparición de "{"
+  const lastBraceIndex = text.lastIndexOf("{");
+  if (lastBraceIndex !== -1) {
+    const potentialJson = text.substring(lastBraceIndex);
+
+    // Intentar extraer JSON completo incluyendo multilínea
+    let braceCount = 0;
+    let jsonEnd = -1;
+
+    for (let i = 0; i < potentialJson.length; i++) {
+      if (potentialJson[i] === "{") braceCount++;
+      if (potentialJson[i] === "}") {
+        braceCount--;
+        if (braceCount === 0) {
+          jsonEnd = i;
+          break;
+        }
+      }
+    }
+
+    if (jsonEnd !== -1) {
+      const jsonString = potentialJson.substring(0, jsonEnd + 1);
+      try {
+        // Limpiar espacios excesivos pero mantener estructura
+        const cleanedJson = jsonString.replace(/\s+/g, " ").trim();
+        const jsonData = JSON.parse(cleanedJson);
+        const cleanText = text.substring(0, lastBraceIndex).trim();
+        return { cleanText, jsonData };
+      } catch {}
+    }
+  }
+
+  // 2. Buscar JSON en líneas individuales
+  const lines = text.split("\n");
+  const textLines = [];
+  let jsonData;
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith("{") && trimmedLine.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmedLine);
+        jsonData = parsed; // Usar el último JSON válido encontrado
+        continue; // No agregar esta línea al texto
+      } catch {}
+    }
+    textLines.push(line);
+  }
+
+  if (jsonData) {
+    return { cleanText: textLines.join("\n").trim(), jsonData };
+  }
+
+  // 3. Buscar JSON multilínea agrupando líneas que parecen JSON
+  let jsonLines = [];
+  const finalTextLines = [];
+  let inJsonBlock = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!inJsonBlock && trimmed.startsWith("{")) {
+      inJsonBlock = true;
+      jsonLines = [line];
+    } else if (inJsonBlock) {
+      jsonLines.push(line);
+      if (trimmed.endsWith("}")) {
+        // Intentar parsear el bloque JSON completo
+        const jsonBlock = jsonLines.join("\n");
+        try {
+          const cleaned = jsonBlock.replace(/\s+/g, " ").trim();
+          const parsed = JSON.parse(cleaned);
+          jsonData = parsed;
+          inJsonBlock = false;
+          jsonLines = [];
+          continue;
+        } catch {
+          // Si falla, agregar las líneas como texto normal
+          finalTextLines.push(...jsonLines);
+          inJsonBlock = false;
+          jsonLines = [];
+        }
+      }
+    } else {
+      finalTextLines.push(line);
+    }
+  }
+
+  // Si quedaron líneas de JSON sin cerrar, agregarlas como texto
+  if (jsonLines.length > 0) {
+    finalTextLines.push(...jsonLines);
+  }
+
+  if (jsonData) {
+    return { cleanText: finalTextLines.join("\n").trim(), jsonData };
+  }
+
+  // Si no hay JSON válido, devolver todo como texto
+  return { cleanText: text };
+}
+
 export async function runAgent({
   phoneNumber,
   userText,
@@ -150,33 +264,36 @@ export async function runAgent({
       );
     }
 
-    // Try to parse JSON response for structured formatting
-    try {
-      const jsonResponse = JSON.parse(assistantText);
+    // Separar texto y JSON de la respuesta del agente
+    const { cleanText, jsonData } = separateTextAndJson(assistantText);
 
-      if (jsonResponse.requiresConfirmation) {
+    // Si hay JSON válido, procesarlo
+    if (jsonData) {
+      if (jsonData.requiresConfirmation) {
         // Import WhatsAppFormatterService here to avoid circular dependencies
         const { WhatsAppFormatterService } = await import(
           "@/services/whatsapp-formatter.service"
         );
         return WhatsAppFormatterService.createConfirmation(
-          jsonResponse.message,
-          jsonResponse.orderId,
+          jsonData.message,
+          jsonData.orderId,
         );
       }
 
-      if (jsonResponse.message) {
-        return { text: jsonResponse.message };
+      if (jsonData.message) {
+        return { text: jsonData.message };
       }
-    } catch {
-      // Not JSON, return as formatted text
+    }
+
+    // Si hay texto limpio (sin JSON), formatearlo y enviarlo
+    if (cleanText) {
       const { WhatsAppFormatterService } = await import(
         "@/services/whatsapp-formatter.service"
       );
-      return { text: WhatsAppFormatterService.formatText(assistantText) };
+      return { text: WhatsAppFormatterService.formatText(cleanText) };
     }
 
-    return { text: assistantText || "Entendido." };
+    return { text: "Entendido." };
   } catch (error) {
     console.error("Error in runAgent:", error);
     throw error;
