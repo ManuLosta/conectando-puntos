@@ -154,15 +154,6 @@ export function NewClientModal({
             <DialogTitle className="text-xl font-semibold">
               Agregar Nuevo Cliente
             </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              disabled={isLoading}
-              className="h-6 w-6"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
           <p className="text-sm text-muted-foreground">
             Completa los datos del nuevo cliente
