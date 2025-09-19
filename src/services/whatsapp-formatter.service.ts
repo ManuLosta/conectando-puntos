@@ -53,6 +53,59 @@ export class WhatsAppFormatterService {
   }
 
   /**
+   * Split order creation into multiple messages: info + confirmation
+   */
+  static createOrderMessages(orderData: {
+    clientName: string;
+    items: Array<{
+      quantity: number;
+      product: string;
+      sku: string;
+      stock: number;
+      price: number;
+    }>;
+    recommendations?: Array<{
+      product: string;
+      sku: string;
+      reason: string;
+      price: number;
+    }>;
+    total: number;
+    orderId: string;
+  }): WhatsAppFormattedMessage[] {
+    // Mensaje 1: Información completa de la orden
+    const header = `🧾 *Pedido para ${orderData.clientName}*`;
+    let infoBody = `${header}\n\n`;
+
+    // Items section
+    infoBody += `📦 *PRODUCTOS SOLICITADOS:*\n`;
+    orderData.items.forEach((item, index) => {
+      const stockStatus =
+        item.stock > 0 ? `✅ Stock: ${item.stock}` : `❌ Sin stock`;
+      infoBody += `${index + 1}. ${item.quantity}× *${item.product}* (${item.sku})\n   ${stockStatus} • $${item.price.toFixed(2)}\n\n`;
+    });
+
+    // Recommendations section
+    if (orderData.recommendations && orderData.recommendations.length > 0) {
+      infoBody += `💡 *RECOMENDACIONES ADICIONALES:*\n`;
+      orderData.recommendations.forEach((rec, index) => {
+        infoBody += `${index + 1}. *${rec.product}* (${rec.sku})\n   💰 $${rec.price.toFixed(2)} • ${rec.reason}\n\n`;
+      });
+    }
+
+    infoBody += `💰 *Total estimado:* $${orderData.total.toFixed(2)}\n`;
+    infoBody += `🆔 *ID del pedido:* ${orderData.orderId}`;
+
+    // Mensaje 2: Solicitud de confirmación
+    const confirmationMessage = this.createConfirmation(
+      "¿Deseas confirmar este pedido?",
+      orderData.orderId,
+    );
+
+    return [{ text: this.formatText(infoBody) }, confirmationMessage];
+  }
+
+  /**
    * Creates a structured order summary message
    */
   static createOrderSummary(orderData: {
