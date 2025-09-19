@@ -18,7 +18,11 @@ export const buscarProductos = tool({
       salespersonId: string;
     };
     // Por ahora, obtenemos todos los productos y filtramos por query
-    const allStock = await stockService.getAllStockByDistributor(distributorId);
+    const allStockResult =
+      await stockService.getAllStockByDistributor(distributorId);
+    const allStock = Array.isArray(allStockResult)
+      ? allStockResult
+      : allStockResult.items;
     const filteredStock = allStock.filter(
       (item) =>
         item.product.name.toLowerCase().includes(query.toLowerCase()) ||

@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TabsProvider, useTabsStore } from "./tabs-store";
-import { StockClientOptimized } from "./stock-client-optimized";
+import { useState, useEffect } from "react";
+import { StockClientPaginated } from "./stock-client-paginated";
+import { StockFilteredPaginated } from "./stock-filtered-paginated";
 import { StockMovementsClient } from "./stock-movements-client";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +35,7 @@ interface StockPageClientProps {
   allStock: ProcessedStockItem[];
   lowStock: ProcessedStockItem[];
   expiringStock: ProcessedStockItem[];
+  totalProductsCount: number;
   distributorId: string;
 }
 
@@ -79,12 +82,22 @@ function CustomTabsTrigger({
 }
 
 function StockPageContent({
-  allStock,
   lowStock,
   expiringStock,
+  totalProductsCount,
   distributorId,
 }: StockPageClientProps) {
   const { activeTab } = useTabsStore();
+  const [lowStockCount, setLowStockCount] = useState(lowStock.length);
+  const [expiringStockCount, setExpiringStockCount] = useState(
+    expiringStock.length,
+  );
+
+  // Actualizar conteos cuando cambien los datos iniciales
+  useEffect(() => {
+    setLowStockCount(lowStock.length);
+    setExpiringStockCount(expiringStock.length);
+  }, [lowStock.length, expiringStock.length]);
 
   return (
     <div className="w-full space-y-4">
@@ -94,14 +107,14 @@ function StockPageContent({
             <WarehouseIcon className="h-4 w-4" />
             <span>Todo el stock</span>
             <Badge variant="secondary" className="ml-1">
-              {allStock.length}
+              {totalProductsCount}
             </Badge>
           </CustomTabsTrigger>
           <CustomTabsTrigger value="low" className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             <span>Stock bajo</span>
             <Badge variant="secondary" className="ml-1">
-              {lowStock.length}
+              {lowStockCount}
             </Badge>
           </CustomTabsTrigger>
           <CustomTabsTrigger
@@ -111,7 +124,7 @@ function StockPageContent({
             <TrendingUp className="h-4 w-4" />
             <span>Próx. a vencer</span>
             <Badge variant="secondary" className="ml-1">
-              {expiringStock.length}
+              {expiringStockCount}
             </Badge>
           </CustomTabsTrigger>
           <CustomTabsTrigger
@@ -128,10 +141,22 @@ function StockPageContent({
         <CardContent className="pt-6">
           {activeTab === "movements" ? (
             <StockMovementsClient distributorId={distributorId} />
-          ) : (
-            <StockClientOptimized
-              allStock={allStock}
+          ) : activeTab === "all" ? (
+            <StockClientPaginated
               distributorId={distributorId}
+              totalProductsCount={totalProductsCount}
+            />
+          ) : activeTab === "low" ? (
+            <StockFilteredPaginated
+              distributorId={distributorId}
+              filterType="low"
+              threshold={10}
+            />
+          ) : (
+            <StockFilteredPaginated
+              distributorId={distributorId}
+              filterType="expiring"
+              daysFromNow={30}
             />
           )}
         </CardContent>
@@ -144,6 +169,7 @@ export function StockPageClient({
   allStock,
   lowStock,
   expiringStock,
+  totalProductsCount,
   distributorId,
 }: StockPageClientProps) {
   return (
@@ -152,6 +178,7 @@ export function StockPageClient({
         allStock={allStock}
         lowStock={lowStock}
         expiringStock={expiringStock}
+        totalProductsCount={totalProductsCount}
         distributorId={distributorId}
       />
     </TabsProvider>
