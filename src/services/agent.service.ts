@@ -143,8 +143,8 @@ function separateTextAndJson(text: string): {
   }
 
   // 3. Buscar JSON multilínea agrupando líneas que parecen JSON
-  let jsonLines = [];
-  const finalTextLines = [];
+  let jsonLines: string[] = [];
+  const finalTextLines: string[] = [];
   let inJsonBlock = false;
 
   for (const line of lines) {
@@ -275,12 +275,12 @@ export async function runAgent({
           "@/services/whatsapp-formatter.service"
         );
         return WhatsAppFormatterService.createConfirmation(
-          jsonData.message,
-          jsonData.orderId,
+          typeof jsonData.message === "string" ? jsonData.message : "",
+          typeof jsonData.orderId === "string" ? jsonData.orderId : undefined,
         );
       }
 
-      if (jsonData.message) {
+      if (jsonData.message && typeof jsonData.message === "string") {
         return { text: jsonData.message };
       }
     }
