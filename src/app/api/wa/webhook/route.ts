@@ -1,6 +1,8 @@
 import { after, NextResponse } from "next/server";
 import { WhatsAppMessage, WhatsAppWebhookBody } from "@/types/whatsapp";
 import { runAgent } from "@/services/agent.service";
+import { deepgramService } from "@/services/deepgram.service";
+import { whatsAppMediaService } from "@/services/whatsapp-media.service";
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN!;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
@@ -117,7 +119,7 @@ export async function POST(request: Request) {
     try {
       const messages = extractMessages(body as WhatsAppWebhookBody);
       for (const message of messages) {
-        await processTextMessage(message);
+        await processMessage(message);
       }
     } catch (err) {
       console.error("Async processing error:", err);
@@ -139,12 +141,30 @@ function extractMessages(body: WhatsAppWebhookBody): WhatsAppMessage[] {
   return messages;
 }
 
-async function processTextMessage(message: WhatsAppMessage): Promise<void> {
+async function processMessage(message: WhatsAppMessage): Promise<void> {
+  if (!message.from || !message.id) {
+    return;
+  }
+
+  // Handle both text and audio messages
   if (
-    message.type !== "text" ||
-    !message.from ||
-    !message.text?.body ||
-    !message.id
+    message.type !== "text" &&
+    message.type !== "audio" &&
+    message.type !== "voice"
+  ) {
+    return;
+  }
+
+  // For text messages, ensure we have text content
+  if (message.type === "text" && !message.text?.body) {
+    return;
+  }
+
+  // For audio/voice messages, ensure we have audio data
+  if (
+    (message.type === "audio" || message.type === "voice") &&
+    !message.audio?.id &&
+    !message.voice?.id
   ) {
     return;
   }
@@ -156,12 +176,63 @@ async function processTextMessage(message: WhatsAppMessage): Promise<void> {
   }
 
   const from = message.from;
-  const text = message.text.body.trim();
+  let text: string;
 
-  // Validar que el mensaje no esté vacío
-  if (!text || text.length === 0) {
-    console.log(`Empty message from ${from}, skipping`);
-    return;
+  if (message.type === "text") {
+    text = message.text!.body.trim();
+
+    // Validar que el mensaje no esté vacío
+    if (!text || text.length === 0) {
+      console.log(`Empty message from ${from}, skipping`);
+      return;
+    }
+  } else {
+    // Handle audio/voice messages
+    try {
+      const mediaId = message.audio?.id || message.voice?.id;
+      const mimeType = message.audio?.mime_type || message.voice?.mime_type;
+
+      if (!mediaId) {
+        console.log(`No media ID found for audio message from ${from}`);
+        return;
+      }
+
+      console.log(
+        `Processing audio message from ${from}, media ID: ${mediaId}`,
+      );
+
+      // Get media URL from WhatsApp
+      const mediaUrl = await whatsAppMediaService.getMediaUrl(mediaId);
+
+      // Download the audio file
+      const audioBuffer = await whatsAppMediaService.downloadMedia(mediaUrl);
+
+      // Transcribe using Deepgram
+      text = await deepgramService.transcribeAudioFromBuffer(
+        audioBuffer,
+        mimeType || "audio/ogg",
+      );
+
+      console.log(
+        `Audio transcribed from ${from}: "${text.substring(0, 50)}..."`,
+      );
+
+      if (!text || text.trim().length === 0) {
+        await sendWhatsAppMessage(
+          normalizePhoneNumber(from),
+          "No pude transcribir el audio. ¿Podrías enviarlo de nuevo o escribir tu mensaje?",
+        );
+        return;
+      }
+    } catch (error) {
+      console.error(`Error processing audio from ${from}:`, error);
+      await sendWhatsAppMessage(
+        normalizePhoneNumber(from),
+        "Hubo un error al procesar tu mensaje de audio. ¿Podrías enviarlo de nuevo?",
+      );
+      processedMessages.delete(message.id);
+      return;
+    }
   }
 
   // Marcar mensaje como procesado
