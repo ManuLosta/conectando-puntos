@@ -288,9 +288,6 @@ export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
               <ShoppingCart className="h-6 w-6" />
               Nuevo Pedido
             </DialogTitle>
-            <Button variant="ghost" size="icon" onClick={handleClose}>
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </DialogHeader>
 
