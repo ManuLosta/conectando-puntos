@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { tool } from "ai";
-import { catalogService } from "@/services/catalog.service";
 import { orderService } from "@/services/order.service";
 import { customerService } from "@/services/customer.service";
 import { stockService } from "@/services/stock.service";
@@ -8,20 +7,24 @@ import { suggestionService } from "@/services/suggestion.service";
 // import { suggestionService } from "@/services/suggestion.service";
 
 export const buscarProductos = tool({
-  description:
-    "Busca productos por palabra clave o SKU en el catálogo de la distribuidora.",
+  description: "Busca productos en el inventario de la distribuidora.",
   inputSchema: z.object({
-    keyword: z
-      .string()
-      .describe("Palabra clave para buscar productos por nombre o SKU"),
+    query: z.string().describe("Texto de búsqueda para productos"),
   }),
-  execute: async ({ keyword }, { experimental_context }) => {
+  execute: async ({ query }, { experimental_context }) => {
     const { distributorId } = experimental_context as {
       distributorId: string;
       phoneNumber: string;
       salespersonId: string;
     };
-    return catalogService.searchProductsByKeyword(distributorId, keyword);
+    // Por ahora, obtenemos todos los productos y filtramos por query
+    const allStock = await stockService.getAllStockByDistributor(distributorId);
+    const filteredStock = allStock.filter(
+      (item) =>
+        item.product.name.toLowerCase().includes(query.toLowerCase()) ||
+        item.product.sku.toLowerCase().includes(query.toLowerCase()),
+    );
+    return filteredStock;
   },
 });
 
@@ -37,7 +40,7 @@ export const consultarStock = tool({
       phoneNumber: string;
       salespersonId: string;
     };
-    return stockService.searchForDistributor(distributorId, query);
+    return stockService.searchStock(distributorId, query);
   },
 });
 
