@@ -24,7 +24,7 @@ export interface WhatsAppMessageService {
 }
 
 export class WhatsAppMessageServiceImpl implements WhatsAppMessageService {
-  private static readonly MAX_MESSAGES = 30;
+  private static readonly MAX_MESSAGES = 20;
   private static readonly SESSION_DURATION_HOURS = 6;
 
   constructor(
