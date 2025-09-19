@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export interface StockItemWithProduct {
   id: string;
@@ -50,197 +50,404 @@ export interface CreateProductWithStockData {
 }
 
 export class StockService {
-  private prisma: PrismaClient;
-
-  constructor() {
-    this.prisma = new PrismaClient();
+  // Helper function to safely convert price values
+  private safeNumber(value: unknown, defaultValue: number = 0): number {
+    if (value === null || value === undefined || value === "") {
+      return defaultValue;
+    }
+    const num = Number(value);
+    return isNaN(num) ? defaultValue : num;
   }
 
-  // Obtener todo el stock de una distribuidora
+  // Obtener todo el stock de una distribuidora con paginación
   async getAllStockByDistributor(
     distributorId: string,
-  ): Promise<StockItemWithProduct[]> {
+    page: number = 1,
+    limit: number = 50,
+    searchQuery?: string,
+  ): Promise<{
+    items: StockItemWithProduct[];
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
     try {
-      const stockItems = await this.prisma.inventoryItem.findMany({
-        where: {
-          distributorId: distributorId,
-          product: {
-            isActive: true,
-          },
-        },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              sku: true,
-              price: true,
-              discountedPrice: true,
-              discount: true,
+      // Construir condiciones de búsqueda si se proporciona
+      const searchConditions = searchQuery
+        ? {
+            OR: [
+              {
+                name: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                sku: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                description: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          }
+        : {};
+
+      // Calcular offset
+      const offset = (page - 1) * limit;
+
+      // Obtener items con paginación
+      const [stockItems, total] = await Promise.all([
+        prisma.inventoryItem.findMany({
+          where: {
+            distributorId: distributorId,
+            product: {
               isActive: true,
+              ...searchConditions,
             },
           },
-        },
-        orderBy: [{ product: { name: "asc" } }, { expirationDate: "asc" }],
-      });
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                sku: true,
+                price: true,
+                discountedPrice: true,
+                discount: true,
+                isActive: true,
+              },
+            },
+          },
+          orderBy: [{ product: { name: "asc" } }, { expirationDate: "asc" }],
+          skip: offset,
+          take: limit,
+        }),
+        prisma.inventoryItem.count({
+          where: {
+            distributorId: distributorId,
+            product: {
+              isActive: true,
+              ...searchConditions,
+            },
+          },
+        }),
+      ]);
 
-      return stockItems.map((item) => ({
-        id: item.id,
-        productId: item.productId,
-        distributorId: item.distributorId,
-        stock: item.stock,
-        lotNumber: item.lotNumber,
-        expirationDate: item.expirationDate,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          description: item.product.description,
-          sku: item.product.sku,
-          price: Number(item.product.price),
-          discountedPrice: item.product.discountedPrice
-            ? Number(item.product.discountedPrice)
-            : undefined,
-          discount: item.product.discount
-            ? Number(item.product.discount)
-            : undefined,
-          isActive: item.product.isActive,
-        },
-      }));
+      const totalPages = Math.ceil(total / limit);
+      const hasNextPage = page < totalPages;
+      const hasPreviousPage = page > 1;
+
+      return {
+        items: stockItems.map((item) => ({
+          id: item.id,
+          productId: item.productId,
+          distributorId: item.distributorId,
+          stock: item.stock,
+          lotNumber: item.lotNumber,
+          expirationDate: item.expirationDate,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            description: item.product.description,
+            sku: item.product.sku,
+            price: this.safeNumber(item.product.price),
+            discountedPrice: item.product.discountedPrice
+              ? this.safeNumber(item.product.discountedPrice)
+              : undefined,
+            discount: item.product.discount
+              ? this.safeNumber(item.product.discount)
+              : undefined,
+            isActive: item.product.isActive,
+          },
+        })),
+        total,
+        totalPages,
+        currentPage: page,
+        hasNextPage,
+        hasPreviousPage,
+      };
     } catch (error) {
       console.error("Error fetching stock by distributor:", error);
       throw new Error("Failed to fetch stock");
     }
   }
 
-  // Obtener stock bajo (menos de X unidades)
+  // Obtener stock bajo (menos de X unidades) con paginación
   async getLowStockByDistributor(
     distributorId: string,
     threshold: number = 10,
-  ): Promise<StockItemWithProduct[]> {
+    page: number = 1,
+    limit: number = 50,
+    searchQuery?: string,
+  ): Promise<{
+    items: StockItemWithProduct[];
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
     try {
-      const stockItems = await this.prisma.inventoryItem.findMany({
-        where: {
-          distributorId: distributorId,
-          stock: {
-            lte: threshold,
-          },
-          product: {
-            isActive: true,
-          },
-        },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              sku: true,
-              price: true,
-              discountedPrice: true,
-              discount: true,
+      // Construir condiciones de búsqueda si se proporciona
+      const searchConditions = searchQuery
+        ? {
+            OR: [
+              {
+                name: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                sku: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                description: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          }
+        : {};
+
+      // Calcular offset
+      const offset = (page - 1) * limit;
+
+      // Obtener items con paginación
+      const [stockItems, total] = await Promise.all([
+        prisma.inventoryItem.findMany({
+          where: {
+            distributorId: distributorId,
+            stock: {
+              lte: threshold,
+            },
+            product: {
               isActive: true,
+              ...searchConditions,
             },
           },
-        },
-        orderBy: [{ stock: "asc" }, { product: { name: "asc" } }],
-      });
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                sku: true,
+                price: true,
+                discountedPrice: true,
+                discount: true,
+                isActive: true,
+              },
+            },
+          },
+          orderBy: [{ stock: "asc" }, { product: { name: "asc" } }],
+          skip: offset,
+          take: limit,
+        }),
+        prisma.inventoryItem.count({
+          where: {
+            distributorId: distributorId,
+            stock: {
+              lte: threshold,
+            },
+            product: {
+              isActive: true,
+              ...searchConditions,
+            },
+          },
+        }),
+      ]);
 
-      return stockItems.map((item) => ({
-        id: item.id,
-        productId: item.productId,
-        distributorId: item.distributorId,
-        stock: item.stock,
-        lotNumber: item.lotNumber,
-        expirationDate: item.expirationDate,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          description: item.product.description,
-          sku: item.product.sku,
-          price: Number(item.product.price),
-          discountedPrice: item.product.discountedPrice
-            ? Number(item.product.discountedPrice)
-            : undefined,
-          discount: item.product.discount
-            ? Number(item.product.discount)
-            : undefined,
-          isActive: item.product.isActive,
-        },
-      }));
+      const totalPages = Math.ceil(total / limit);
+      const hasNextPage = page < totalPages;
+      const hasPreviousPage = page > 1;
+
+      return {
+        items: stockItems.map((item) => ({
+          id: item.id,
+          productId: item.productId,
+          distributorId: item.distributorId,
+          stock: item.stock,
+          lotNumber: item.lotNumber,
+          expirationDate: item.expirationDate,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            description: item.product.description,
+            sku: item.product.sku,
+            price: this.safeNumber(item.product.price),
+            discountedPrice: item.product.discountedPrice
+              ? this.safeNumber(item.product.discountedPrice)
+              : undefined,
+            discount: item.product.discount
+              ? this.safeNumber(item.product.discount)
+              : undefined,
+            isActive: item.product.isActive,
+          },
+        })),
+        total,
+        totalPages,
+        currentPage: page,
+        hasNextPage,
+        hasPreviousPage,
+      };
     } catch (error) {
       console.error("Error fetching low stock:", error);
       throw new Error("Failed to fetch low stock");
     }
   }
 
-  // Obtener productos próximos a vencer
+  // Obtener productos próximos a vencer con paginación
   async getExpiringStockByDistributor(
     distributorId: string,
     daysFromNow: number = 30,
-  ): Promise<StockItemWithProduct[]> {
+    page: number = 1,
+    limit: number = 50,
+    searchQuery?: string,
+  ): Promise<{
+    items: StockItemWithProduct[];
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
     try {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + daysFromNow);
 
-      const stockItems = await this.prisma.inventoryItem.findMany({
-        where: {
-          distributorId: distributorId,
-          expirationDate: {
-            lte: futureDate,
-          },
-          stock: {
-            gt: 0, // Solo productos con stock
-          },
-          product: {
-            isActive: true,
-          },
-        },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              sku: true,
-              price: true,
-              discountedPrice: true,
-              discount: true,
+      // Construir condiciones de búsqueda si se proporciona
+      const searchConditions = searchQuery
+        ? {
+            OR: [
+              {
+                name: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                sku: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                description: {
+                  contains: searchQuery,
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          }
+        : {};
+
+      // Calcular offset
+      const offset = (page - 1) * limit;
+
+      // Obtener items con paginación
+      const [stockItems, total] = await Promise.all([
+        prisma.inventoryItem.findMany({
+          where: {
+            distributorId: distributorId,
+            expirationDate: {
+              lte: futureDate,
+            },
+            stock: {
+              gt: 0, // Solo productos con stock
+            },
+            product: {
               isActive: true,
+              ...searchConditions,
             },
           },
-        },
-        orderBy: [{ expirationDate: "asc" }, { product: { name: "asc" } }],
-      });
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                sku: true,
+                price: true,
+                discountedPrice: true,
+                discount: true,
+                isActive: true,
+              },
+            },
+          },
+          orderBy: [{ expirationDate: "asc" }, { product: { name: "asc" } }],
+          skip: offset,
+          take: limit,
+        }),
+        prisma.inventoryItem.count({
+          where: {
+            distributorId: distributorId,
+            expirationDate: {
+              lte: futureDate,
+            },
+            stock: {
+              gt: 0, // Solo productos con stock
+            },
+            product: {
+              isActive: true,
+              ...searchConditions,
+            },
+          },
+        }),
+      ]);
 
-      return stockItems.map((item) => ({
-        id: item.id,
-        productId: item.productId,
-        distributorId: item.distributorId,
-        stock: item.stock,
-        lotNumber: item.lotNumber,
-        expirationDate: item.expirationDate,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          description: item.product.description,
-          sku: item.product.sku,
-          price: Number(item.product.price),
-          discountedPrice: item.product.discountedPrice
-            ? Number(item.product.discountedPrice)
-            : undefined,
-          discount: item.product.discount
-            ? Number(item.product.discount)
-            : undefined,
-          isActive: item.product.isActive,
-        },
-      }));
+      const totalPages = Math.ceil(total / limit);
+      const hasNextPage = page < totalPages;
+      const hasPreviousPage = page > 1;
+
+      return {
+        items: stockItems.map((item) => ({
+          id: item.id,
+          productId: item.productId,
+          distributorId: item.distributorId,
+          stock: item.stock,
+          lotNumber: item.lotNumber,
+          expirationDate: item.expirationDate,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            description: item.product.description,
+            sku: item.product.sku,
+            price: this.safeNumber(item.product.price),
+            discountedPrice: item.product.discountedPrice
+              ? this.safeNumber(item.product.discountedPrice)
+              : undefined,
+            discount: item.product.discount
+              ? this.safeNumber(item.product.discount)
+              : undefined,
+            isActive: item.product.isActive,
+          },
+        })),
+        total,
+        totalPages,
+        currentPage: page,
+        hasNextPage,
+        hasPreviousPage,
+      };
     } catch (error) {
       console.error("Error fetching expiring stock:", error);
       throw new Error("Failed to fetch expiring stock");
@@ -250,7 +457,7 @@ export class StockService {
   // Obtener stock por producto
   async getStockByProduct(productId: string): Promise<StockItemWithProduct[]> {
     try {
-      const stockItems = await this.prisma.inventoryItem.findMany({
+      const stockItems = await prisma.inventoryItem.findMany({
         where: {
           productId: productId,
         },
@@ -285,12 +492,12 @@ export class StockService {
           name: item.product.name,
           description: item.product.description,
           sku: item.product.sku,
-          price: Number(item.product.price),
+          price: this.safeNumber(item.product.price),
           discountedPrice: item.product.discountedPrice
-            ? Number(item.product.discountedPrice)
+            ? this.safeNumber(item.product.discountedPrice)
             : undefined,
           discount: item.product.discount
-            ? Number(item.product.discount)
+            ? this.safeNumber(item.product.discount)
             : undefined,
           isActive: item.product.isActive,
         },
@@ -343,7 +550,7 @@ export class StockService {
         ],
       }));
 
-      const stockItems = await this.prisma.inventoryItem.findMany({
+      const stockItems = await prisma.inventoryItem.findMany({
         where: {
           distributorId: distributorId,
           product: {
@@ -383,12 +590,12 @@ export class StockService {
           name: item.product.name,
           description: item.product.description,
           sku: item.product.sku,
-          price: Number(item.product.price),
+          price: this.safeNumber(item.product.price),
           discountedPrice: item.product.discountedPrice
-            ? Number(item.product.discountedPrice)
+            ? this.safeNumber(item.product.discountedPrice)
             : undefined,
           discount: item.product.discount
-            ? Number(item.product.discount)
+            ? this.safeNumber(item.product.discount)
             : undefined,
           isActive: item.product.isActive,
         },
@@ -405,7 +612,7 @@ export class StockService {
     updateData: UpdateStockData,
   ): Promise<StockItemWithProduct> {
     try {
-      const updatedItem = await this.prisma.inventoryItem.update({
+      const updatedItem = await prisma.inventoryItem.update({
         where: {
           id: inventoryItemId,
         },
@@ -440,12 +647,12 @@ export class StockService {
           name: updatedItem.product.name,
           description: updatedItem.product.description,
           sku: updatedItem.product.sku,
-          price: Number(updatedItem.product.price),
+          price: this.safeNumber(updatedItem.product.price),
           discountedPrice: updatedItem.product.discountedPrice
-            ? Number(updatedItem.product.discountedPrice)
+            ? this.safeNumber(updatedItem.product.discountedPrice)
             : undefined,
           discount: updatedItem.product.discount
-            ? Number(updatedItem.product.discount)
+            ? this.safeNumber(updatedItem.product.discount)
             : undefined,
           isActive: updatedItem.product.isActive,
         },
@@ -463,7 +670,7 @@ export class StockService {
   ): Promise<void> {
     try {
       // Primero obtenemos el item actual
-      const currentItem = await this.prisma.inventoryItem.findUnique({
+      const currentItem = await prisma.inventoryItem.findUnique({
         where: { id: inventoryItemId },
       });
 
@@ -493,14 +700,14 @@ export class StockService {
       }
 
       // Realizamos ambas operaciones en una transacción
-      await this.prisma.$transaction([
+      await prisma.$transaction([
         // Actualizar el stock del inventory item
-        this.prisma.inventoryItem.update({
+        prisma.inventoryItem.update({
           where: { id: inventoryItemId },
           data: { stock: newStock },
         }),
         // Crear el registro del movimiento
-        this.prisma.stockMovement.create({
+        prisma.stockMovement.create({
           data: {
             inventoryItemId,
             type: movementData.type,
@@ -521,7 +728,7 @@ export class StockService {
   // Obtener historial de movimientos de stock
   async getStockMovementHistory(inventoryItemId: string) {
     try {
-      const movements = await this.prisma.stockMovement.findMany({
+      const movements = await prisma.stockMovement.findMany({
         where: {
           inventoryItemId: inventoryItemId,
         },
@@ -552,7 +759,7 @@ export class StockService {
     offset: number = 0,
   ) {
     try {
-      const movements = await this.prisma.stockMovement.findMany({
+      const movements = await prisma.stockMovement.findMany({
         where: {
           inventoryItem: {
             distributorId: distributorId,
@@ -585,7 +792,7 @@ export class StockService {
       });
 
       // Obtener el total de movimientos para paginación
-      const total = await this.prisma.stockMovement.count({
+      const total = await prisma.stockMovement.count({
         where: {
           inventoryItem: {
             distributorId: distributorId,
@@ -624,13 +831,34 @@ export class StockService {
     }
   }
 
+  // Obtener el total de productos únicos en stock para una distribuidora
+  async getTotalProductsCount(distributorId: string): Promise<number> {
+    try {
+      // Usar groupBy en lugar de count con distinct para evitar problemas de tipos
+      const result = await prisma.inventoryItem.groupBy({
+        by: ["productId"],
+        where: {
+          distributorId: distributorId,
+          product: {
+            isActive: true,
+          },
+        },
+      });
+
+      return result.length;
+    } catch (error) {
+      console.error("Error getting total products count:", error);
+      throw new Error("Failed to get total products count");
+    }
+  }
+
   // Obtener stock total de un producto (suma de todos los lotes)
   async getTotalStockForProduct(
     distributorId: string,
     productId: string,
   ): Promise<number> {
     try {
-      const result = await this.prisma.inventoryItem.aggregate({
+      const result = await prisma.inventoryItem.aggregate({
         where: {
           distributorId: distributorId,
           productId: productId,
@@ -652,7 +880,7 @@ export class StockService {
     data: CreateProductWithStockData,
   ): Promise<StockItemWithProduct> {
     try {
-      const result = await this.prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
         // Verificar que el distribuidor existe
         const distributor = await tx.distributor.findUnique({
           where: { id: data.distributorId },
@@ -730,11 +958,13 @@ export class StockService {
             name: product.name,
             description: product.description,
             sku: product.sku,
-            price: Number(product.price),
+            price: this.safeNumber(product.price),
             discountedPrice: product.discountedPrice
-              ? Number(product.discountedPrice)
+              ? this.safeNumber(product.discountedPrice)
               : undefined,
-            discount: product.discount ? Number(product.discount) : undefined,
+            discount: product.discount
+              ? this.safeNumber(product.discount)
+              : undefined,
             isActive: product.isActive,
           },
         };
@@ -757,7 +987,7 @@ export class StockService {
     reason?: string;
   }): Promise<StockItemWithProduct> {
     try {
-      const result = await this.prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
         // Verificar que el producto existe y pertenece a la distribuidora
         const product = await tx.product.findFirst({
           where: {
@@ -822,11 +1052,13 @@ export class StockService {
             name: product.name,
             description: product.description,
             sku: product.sku,
-            price: Number(product.price),
+            price: this.safeNumber(product.price),
             discountedPrice: product.discountedPrice
-              ? Number(product.discountedPrice)
+              ? this.safeNumber(product.discountedPrice)
               : undefined,
-            discount: product.discount ? Number(product.discount) : undefined,
+            discount: product.discount
+              ? this.safeNumber(product.discount)
+              : undefined,
             isActive: product.isActive,
           },
         };
@@ -842,7 +1074,7 @@ export class StockService {
   // Eliminar producto (soft delete - marcar como inactivo)
   async deleteProduct(productId: string, distributorId: string): Promise<void> {
     try {
-      await this.prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx) => {
         // Verificar que el producto pertenece a la distribuidora
         const product = await tx.product.findFirst({
           where: {

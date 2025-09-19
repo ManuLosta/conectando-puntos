@@ -52,6 +52,9 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type");
     const threshold = searchParams.get("threshold");
     const daysFromNow = searchParams.get("daysFromNow");
+    const page = searchParams.get("page");
+    const limit = searchParams.get("limit");
+    const search = searchParams.get("search");
 
     if (!distributorId) {
       return NextResponse.json(
@@ -65,20 +68,37 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case "low":
         const thresholdNum = threshold ? parseInt(threshold) : 10;
+        const pageNumLow = page ? parseInt(page) : 1;
+        const limitNumLow = limit ? parseInt(limit) : 50;
         stockData = await stockService.getLowStockByDistributor(
           distributorId,
           thresholdNum,
+          pageNumLow,
+          limitNumLow,
+          search || undefined,
         );
         break;
       case "expiring":
         const daysNum = daysFromNow ? parseInt(daysFromNow) : 30;
+        const pageNumExp = page ? parseInt(page) : 1;
+        const limitNumExp = limit ? parseInt(limit) : 50;
         stockData = await stockService.getExpiringStockByDistributor(
           distributorId,
           daysNum,
+          pageNumExp,
+          limitNumExp,
+          search || undefined,
         );
         break;
       default:
-        stockData = await stockService.getAllStockByDistributor(distributorId);
+        const pageNum = page ? parseInt(page) : 1;
+        const limitNum = limit ? parseInt(limit) : 50;
+        stockData = await stockService.getAllStockByDistributor(
+          distributorId,
+          pageNum,
+          limitNum,
+          search || undefined,
+        );
     }
 
     return NextResponse.json({ stock: stockData });

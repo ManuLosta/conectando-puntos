@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Transformar datos para el frontend
-      const transformedItems = stockItems.map((item) => ({
+      const items = Array.isArray(stockItems) ? stockItems : stockItems.items;
+      const transformedItems = items.map((item) => ({
         id: item.id,
         productId: item.product.id,
         name: item.product.name,

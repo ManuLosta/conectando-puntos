@@ -53,27 +53,6 @@ function transformStockData(
   }));
 }
 
-// Funciones de filtrado para el frontend
-function getStockCategories(allStock: ProcessedStockItem[]) {
-  const lowThreshold = 10;
-  const daysFromNow = 30;
-  const futureDate = new Date();
-  futureDate.setDate(futureDate.getDate() + daysFromNow);
-
-  const lowStock = allStock.filter((item) => item.stock <= lowThreshold);
-
-  const expiringStock = allStock.filter((item) => {
-    const expDate = new Date(item.expirationDate);
-    return expDate <= futureDate && item.stock > 0;
-  });
-
-  return {
-    allStock,
-    lowStock,
-    expiringStock,
-  };
-}
-
 async function getStockData() {
   try {
     const session = await auth.api.getSession({
@@ -92,15 +71,25 @@ async function getStockData() {
       throw new Error("No distributor found for user");
     }
 
-    // Solo obtenemos todos los datos una vez
-    const allStock = await stockService.getAllStockByDistributor(distributorId);
-    const transformedStock = transformStockData(allStock);
+    // Solo obtenemos los contadores para las pestañas, no todos los datos
+    const [lowStockResult, expiringStockResult, totalProductsCount] =
+      await Promise.all([
+        stockService.getLowStockByDistributor(distributorId, 10, 1, 1), // Solo necesitamos el conteo
+        stockService.getExpiringStockByDistributor(distributorId, 30, 1, 1), // Solo necesitamos el conteo
+        stockService.getTotalProductsCount(distributorId),
+      ]);
 
-    // Calculamos las categorías en el servidor para los contadores iniciales
-    const categories = getStockCategories(transformedStock);
+    // Extraemos solo los items para la transformación
+    const transformedLowStock = transformStockData(lowStockResult.items);
+    const transformedExpiringStock = transformStockData(
+      expiringStockResult.items,
+    );
 
     return {
-      ...categories,
+      allStock: [], // Ya no cargamos todos los datos aquí
+      lowStock: transformedLowStock,
+      expiringStock: transformedExpiringStock,
+      totalProductsCount,
       distributorId,
     };
   } catch (error) {
@@ -109,14 +98,20 @@ async function getStockData() {
       allStock: [],
       lowStock: [],
       expiringStock: [],
+      totalProductsCount: 0,
       distributorId: "",
     };
   }
 }
 
 export default async function StockPage() {
-  const { allStock, lowStock, expiringStock, distributorId } =
-    await getStockData();
+  const {
+    allStock,
+    lowStock,
+    expiringStock,
+    totalProductsCount,
+    distributorId,
+  } = await getStockData();
 
   return (
     <>
@@ -141,6 +136,7 @@ export default async function StockPage() {
               allStock={allStock}
               lowStock={lowStock}
               expiringStock={expiringStock}
+              totalProductsCount={totalProductsCount}
               distributorId={distributorId}
             />
           </Suspense>
