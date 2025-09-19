@@ -1,0 +1,50 @@
+enum DeliveryStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+model DeliveryNote {
+  id                 String         @id @default(cuid())
+  deliveryNoteNumber String         @unique
+  status             DeliveryStatus @default(PENDING)
+  
+  // References
+  orderId       String
+  distributorId String
+  clientId      String?
+  
+  // Delivery details
+  issueDate       DateTime  @default(now())
+  scheduledDate   DateTime?
+  deliveredDate   DateTime?
+  deliveryAddress String
+  
+  // Contact info
+  contactName  String?
+  contactPhone String?
+  
+  // Additional info
+  notes            String?
+  deliveryInstructions String?
+  carrierName      String?
+  trackingNumber   String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  order       Order             @relation(fields: [orderId], references: [id])
+  distributor Distributor       @relation(fields: [distributorId], references: [id])
+  client      Client?           @relation(fields: [clientId], references: [id])
+
+  // Índices para optimización
+  @@index([distributorId, createdAt])
+  @@index([distributorId, status])
+  @@index([orderId])
+  @@index([scheduledDate])
+  @@map("delivery_notes")
+}
+

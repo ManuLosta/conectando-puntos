@@ -1,5 +1,9 @@
 import { after, NextResponse } from "next/server";
-import { WhatsAppMessage, WhatsAppWebhookBody } from "@/types/whatsapp";
+import {
+  WhatsAppMessage,
+  WhatsAppWebhookBody,
+  WhatsAppFormattedResponse,
+} from "@/types/whatsapp";
 import { runAgent } from "@/services/agent.service";
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN!;

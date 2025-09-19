@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Check, Truck, X, CheckSquare, Square } from "lucide-react";
@@ -190,6 +191,7 @@ export function OrdersTable({
   onOrderSelectionChange,
   onSelectAllChange,
 }: OrdersTableProps) {
+  const { toast } = useToast();
   const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState<{
@@ -301,9 +303,12 @@ export function OrdersTable({
       window.location.reload();
     } catch (error) {
       console.error("Error al actualizar el pedido:", error);
-      alert(
-        `Error al actualizar el pedido: ${error instanceof Error ? error.message : "Error desconocido"}`,
-      );
+      toast({
+        variant: "destructive",
+        title: "Error al actualizar el pedido",
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
+      });
     }
   };
 

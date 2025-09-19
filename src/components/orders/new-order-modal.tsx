@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -152,6 +153,7 @@ function formatCurrency(amount: number) {
 }
 
 export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
+  const { toast } = useToast();
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedSalesperson, setSelectedSalesperson] = useState<string>("");
   const [deliveryAddress, setDeliveryAddress] = useState<string>("");
@@ -173,7 +175,11 @@ export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
     if (!selectedProduct || quantity <= 0) return;
 
     if (quantity > selectedProduct.stock) {
-      alert(`Stock insuficiente. Disponible: ${selectedProduct.stock}`);
+      toast({
+        variant: "destructive",
+        title: "Stock insuficiente",
+        description: `Stock disponible: ${selectedProduct.stock}`,
+      });
       return;
     }
 
@@ -187,7 +193,11 @@ export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
       const newQuantity = updatedItems[existingItemIndex].quantity + quantity;
 
       if (newQuantity > selectedProduct.stock) {
-        alert(`Stock insuficiente. Disponible: ${selectedProduct.stock}`);
+        toast({
+          variant: "destructive",
+          title: "Stock insuficiente",
+          description: `Stock disponible: ${selectedProduct.stock}`,
+        });
         return;
       }
 
@@ -225,7 +235,11 @@ export function NewOrderModal({ isOpen, onClose, onSave }: NewOrderModalProps) {
     if (!product) return;
 
     if (newQuantity > product.stock) {
-      alert(`Stock insuficiente. Disponible: ${product.stock}`);
+      toast({
+        variant: "destructive",
+        title: "Stock insuficiente",
+        description: `Stock disponible: ${product.stock}`,
+      });
       return;
     }
 

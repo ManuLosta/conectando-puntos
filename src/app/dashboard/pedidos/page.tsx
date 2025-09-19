@@ -1,4 +1,7 @@
 import { Suspense } from "react";
+
+// Force dynamic rendering since we use headers() for authentication
+export const dynamic = "force-dynamic";
 import {
   Breadcrumb,
   BreadcrumbItem,

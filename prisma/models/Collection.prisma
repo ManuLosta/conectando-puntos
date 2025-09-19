@@ -1,0 +1,57 @@
+enum CollectionStatus {
+  PENDING
+  PARTIAL
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentType {
+  CASH
+  BANK_TRANSFER
+  CHECK
+  CREDIT_CARD
+  DEBIT_CARD
+  DIGITAL_WALLET
+  OTHER
+}
+
+model Collection {
+  id               String           @id @default(cuid())
+  collectionNumber String           @unique
+  status           CollectionStatus @default(PENDING)
+  
+  // References
+  invoiceId     String
+  distributorId String
+  collectorId   String?
+  
+  // Collection details
+  amountDue     Decimal   @db.Decimal(10, 2)
+  amountPaid    Decimal   @db.Decimal(10, 2) @default(0)
+  collectionDate DateTime @default(now())
+  dueDate       DateTime
+  
+  // Payment method used for this collection
+  paymentType   PaymentType?
+  
+  // Additional info
+  notes         String?
+  reference     String?
+  receiptNumber String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id])
+  distributor Distributor  @relation(fields: [distributorId], references: [id])
+  collector   Salesperson? @relation(fields: [collectorId], references: [id])
+
+  // Índices para optimización
+  @@index([distributorId, collectionDate])
+  @@index([distributorId, status])
+  @@index([invoiceId])
+  @@index([dueDate])
+  @@map("collections")
+}

@@ -1,4 +1,7 @@
 import { Suspense } from "react";
+
+// Force dynamic rendering since we use headers() for authentication
+export const dynamic = "force-dynamic";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -88,7 +91,7 @@ async function ClientsData() {
   }
 }
 
-export default function ClientesPage() {
+export default async function ClientesPage() {
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">

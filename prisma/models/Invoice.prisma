@@ -1,0 +1,46 @@
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  status        InvoiceStatus @default(DRAFT)
+  
+  // References
+  orderId       String
+  distributorId String
+  clientId      String?
+  
+  // Invoice details
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime
+  subtotal      Decimal       @db.Decimal(10, 2)
+  taxAmount     Decimal       @db.Decimal(10, 2) @default(0)
+  total         Decimal       @db.Decimal(10, 2)
+  
+  // Additional info
+  notes         String?
+  terms         String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  order       Order         @relation(fields: [orderId], references: [id])
+  distributor Distributor   @relation(fields: [distributorId], references: [id])
+  client      Client?       @relation(fields: [clientId], references: [id])
+  collections Collection[]
+
+  // Índices para optimización
+  @@index([distributorId, createdAt])
+  @@index([distributorId, status])
+  @@index([orderId])
+  @@map("invoices")
+}
+
