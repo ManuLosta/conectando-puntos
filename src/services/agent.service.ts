@@ -88,102 +88,34 @@ function separateTextAndJson(text: string): {
     // Si no es JSON puro, buscar JSON mezclado con texto
   }
 
-  // 1. Buscar patrón específico: texto seguido de JSON al final
-  // Buscar desde la última aparición de "{"
-  const lastBraceIndex = text.lastIndexOf("{");
-  if (lastBraceIndex !== -1) {
-    const potentialJson = text.substring(lastBraceIndex);
-
-    // Intentar extraer JSON completo incluyendo multilínea
-    let braceCount = 0;
-    let jsonEnd = -1;
-
-    for (let i = 0; i < potentialJson.length; i++) {
-      if (potentialJson[i] === "{") braceCount++;
-      if (potentialJson[i] === "}") {
-        braceCount--;
-        if (braceCount === 0) {
-          jsonEnd = i;
-          break;
-        }
-      }
-    }
-
-    if (jsonEnd !== -1) {
-      const jsonString = potentialJson.substring(0, jsonEnd + 1);
-      try {
-        // Limpiar espacios excesivos pero mantener estructura
-        const cleanedJson = jsonString.replace(/\s+/g, " ").trim();
-        const jsonData = JSON.parse(cleanedJson);
-        const cleanText = text.substring(0, lastBraceIndex).trim();
-        return { cleanText, jsonData };
-      } catch {}
-    }
-  }
-
-  // 2. Buscar JSON en líneas individuales
+  // 1. Buscar cualquier línea que empiece con { (puede ser JSON parcial)
+  // Si encontramos JSON parcial/malformado, removemos todo desde esa línea
   const lines = text.split("\n");
-  const textLines = [];
-  let jsonData;
+  let jsonStartLine = -1;
 
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    if (trimmedLine.startsWith("{") && trimmedLine.endsWith("}")) {
-      try {
-        const parsed = JSON.parse(trimmedLine);
-        jsonData = parsed; // Usar el último JSON válido encontrado
-        continue; // No agregar esta línea al texto
-      } catch {}
-    }
-    textLines.push(line);
-  }
-
-  if (jsonData) {
-    return { cleanText: textLines.join("\n").trim(), jsonData };
-  }
-
-  // 3. Buscar JSON multilínea agrupando líneas que parecen JSON
-  let jsonLines: string[] = [];
-  const finalTextLines: string[] = [];
-  let inJsonBlock = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (!inJsonBlock && trimmed.startsWith("{")) {
-      inJsonBlock = true;
-      jsonLines = [line];
-    } else if (inJsonBlock) {
-      jsonLines.push(line);
-      if (trimmed.endsWith("}")) {
-        // Intentar parsear el bloque JSON completo
-        const jsonBlock = jsonLines.join("\n");
-        try {
-          const cleaned = jsonBlock.replace(/\s+/g, " ").trim();
-          const parsed = JSON.parse(cleaned);
-          jsonData = parsed;
-          inJsonBlock = false;
-          jsonLines = [];
-          continue;
-        } catch {
-          // Si falla, agregar las líneas como texto normal
-          finalTextLines.push(...jsonLines);
-          inJsonBlock = false;
-          jsonLines = [];
-        }
-      }
-    } else {
-      finalTextLines.push(line);
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("{")) {
+      jsonStartLine = i;
+      break;
     }
   }
 
-  // Si quedaron líneas de JSON sin cerrar, agregarlas como texto
-  if (jsonLines.length > 0) {
-    finalTextLines.push(...jsonLines);
-  }
+  if (jsonStartLine !== -1) {
+    // Intentar parsear desde esa línea hacia abajo como JSON
+    const jsonLines = lines.slice(jsonStartLine);
+    const potentialJson = jsonLines.join("\n");
 
-  if (jsonData) {
-    return { cleanText: finalTextLines.join("\n").trim(), jsonData };
+    try {
+      const cleanedJson = potentialJson.replace(/\s+/g, " ").trim();
+      const jsonData = JSON.parse(cleanedJson);
+      const cleanText = lines.slice(0, jsonStartLine).join("\n").trim();
+      return { cleanText, jsonData };
+    } catch {
+      // JSON malformado o incompleto - remover todo desde la línea de JSON
+      const cleanText = lines.slice(0, jsonStartLine).join("\n").trim();
+      return { cleanText };
+    }
   }
 
   // Si no hay JSON válido, devolver todo como texto
