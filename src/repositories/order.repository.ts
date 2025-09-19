@@ -18,7 +18,7 @@ export interface OrderItemInput {
 export interface CreateOrderInput {
   distributorId: string;
   clientId: string;
-  salespersonId: string;
+  salespersonId: string | null;
   items: OrderItemInput[];
   deliveryAddress?: string;
   notes?: string;
