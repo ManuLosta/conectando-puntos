@@ -81,44 +81,31 @@ function separateTextAndJson(text: string): {
   jsonData?: Record<string, unknown>;
 } {
   try {
-    // Primero intentar parsear todo el texto como JSON
+    // Si todo el texto es JSON válido, retornarlo
     const fullJson = JSON.parse(text);
     return { cleanText: "", jsonData: fullJson };
   } catch {
-    // Si no es JSON puro, buscar JSON mezclado con texto
+    // No es JSON puro, continuar
   }
 
-  // 1. Buscar cualquier línea que empiece con { (puede ser JSON parcial)
-  // Si encontramos JSON parcial/malformado, removemos todo desde esa línea
-  const lines = text.split("\n");
-  let jsonStartLine = -1;
+  // Buscar el primer { y el último } para extraer JSON potencial
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
 
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed.startsWith("{")) {
-      jsonStartLine = i;
-      break;
-    }
-  }
-
-  if (jsonStartLine !== -1) {
-    // Intentar parsear desde esa línea hacia abajo como JSON
-    const jsonLines = lines.slice(jsonStartLine);
-    const potentialJson = jsonLines.join("\n");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const potentialJson = text.substring(firstBrace, lastBrace + 1);
 
     try {
-      const cleanedJson = potentialJson.replace(/\s+/g, " ").trim();
-      const jsonData = JSON.parse(cleanedJson);
-      const cleanText = lines.slice(0, jsonStartLine).join("\n").trim();
+      const jsonData = JSON.parse(potentialJson);
+      // Si parseó correctamente, extraer el texto antes del JSON
+      const cleanText = text.substring(0, firstBrace).trim();
       return { cleanText, jsonData };
     } catch {
-      // JSON malformado o incompleto - remover todo desde la línea de JSON
-      const cleanText = lines.slice(0, jsonStartLine).join("\n").trim();
-      return { cleanText };
+      // JSON malformado, ignorarlo
     }
   }
 
-  // Si no hay JSON válido, devolver todo como texto
+  // No hay JSON válido, devolver todo como texto limpio
   return { cleanText: text };
 }
 
