@@ -5,6 +5,14 @@ export interface WhatsAppMessage {
   text?: {
     body: string;
   };
+  audio?: {
+    id: string;
+    mime_type: string;
+  };
+  voice?: {
+    id: string;
+    mime_type: string;
+  };
   interactive?: {
     type: string;
     button_reply?: {
