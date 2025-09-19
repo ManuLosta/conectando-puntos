@@ -12,6 +12,11 @@ const MessageSchema = z.object({
   content: z.string().describe("Contenido del mensaje"),
 });
 
+const GreetingSchema = z.object({
+  type: z.literal("greeting"),
+  message: z.string().describe("Mensaje de saludo o conversación casual"),
+});
+
 const OrderCreationSchema = z.object({
   type: z.literal("order_creation"),
   clientName: z.string().describe("Nombre del cliente"),
@@ -79,6 +84,7 @@ const ClientSearchSchema = z.object({
 
 const ResponseSchema = z.discriminatedUnion("type", [
   MessageSchema,
+  GreetingSchema,
   OrderCreationSchema,
   ConfirmationSchema,
   ProductSuggestionsSchema,
@@ -89,6 +95,7 @@ const SYSTEM_PROMPT = `
 Eres un asistente de pedidos para vendedores de distribuidoras. Utiliza mensajes estructurados con formato WhatsApp apropiado.
 
 TIPOS DE RESPUESTA DISPONIBLES:
+- "greeting": Para saludos, conversación casual, mensajes de bienvenida
 - "simple": Para mensajes de texto simples, información general
 - "order_creation": Cuando creas una orden borrador completa con productos y recomendaciones
 - "confirmation": Para solicitar confirmación de acciones importantes
@@ -210,70 +217,145 @@ export async function runAgent({
       responseText = last.content;
     }
 
-    // Then use generateObject to structure the final response
-    const { object } = await generateObject({
-      model: chatModel,
-      system:
-        "Convierte la siguiente respuesta al formato estructurado apropiado. Analiza el contenido y determina el tipo correcto de respuesta.",
-      messages: [
-        { role: "user", content: `Respuesta a estructurar: ${responseText}` },
-      ],
-      schema: ResponseSchema,
-    });
-
-    // Save user message and structured response to database
-    await whatsAppMessageService.addMessage(session.id, "user", trimmedText);
-    await whatsAppMessageService.addMessage(
-      session.id,
-      "assistant",
-      JSON.stringify(object),
-    );
-
-    // Convert structured object to WhatsApp messages
+    // Import formatter service
     const { WhatsAppFormatterService } = await import(
       "@/services/whatsapp-formatter.service"
     );
 
-    switch (object.type) {
-      case "simple":
-        return [{ text: WhatsAppFormatterService.formatText(object.content) }];
+    // Detect if response should be structured using AI
+    const toolsWereUsed = response.messages.some(
+      (msg) =>
+        Array.isArray(msg.content) &&
+        msg.content.some((part) => part.type === "tool-result"),
+    );
 
-      case "order_creation":
-        return WhatsAppFormatterService.createOrderMessages({
-          clientName: object.clientName,
-          items: object.items.map((item) => ({
-            ...item,
-            stock: 999, // TODO: Get actual stock from item data
-          })),
-          recommendations: object.recommendations,
-          total: object.total,
-          orderId: object.orderId,
+    // Use AI to determine if structured response is needed
+    const { object: detectionResult } = await generateObject({
+      model: chatModel,
+      system: `Analiza si esta respuesta requiere formato estructurado o es conversación casual.
+
+CRITERIOS PARA ESTRUCTURADO:
+- Contiene información de órdenes/pedidos
+- Presenta sugerencias de productos
+- Muestra resultados de búsqueda de clientes
+- Solicita confirmaciones importantes
+- Presenta datos de inventario/stock
+- Se usaron herramientas de negocio
+
+CRITERIOS PARA CASUAL:
+- Saludos simples
+- Conversación general
+- Preguntas informativas
+- Respuestas de ayuda general`,
+      messages: [
+        {
+          role: "user",
+          content: `Respuesta del asistente: "${responseText}"\nSe usaron herramientas: ${toolsWereUsed ? "Sí" : "No"}\n\n¿Requiere formato estructurado?`,
+        },
+      ],
+      schema: z.object({
+        needsStructured: z
+          .boolean()
+          .describe(
+            "true si requiere formato estructurado, false si es conversación casual",
+          ),
+        reason: z.string().describe("Breve explicación del por qué"),
+      }),
+    });
+
+    const shouldUseStructured = detectionResult.needsStructured;
+    console.log(
+      `Structure detection: ${shouldUseStructured} - ${detectionResult.reason}`,
+    );
+
+    if (shouldUseStructured) {
+      try {
+        // Use generateObject for structured responses when tools were used or business content detected
+        const { object } = await generateObject({
+          model: chatModel,
+          system:
+            "Analiza la respuesta y convierte al formato estructurado más apropiado. Si es conversación casual, usa 'greeting'. Si es información de negocio, usa el tipo apropiado.",
+          messages: [
+            {
+              role: "user",
+              content: `Respuesta: ${responseText}\n\nHerramientas usadas: ${toolsWereUsed ? "Sí" : "No"}`,
+            },
+          ],
+          schema: ResponseSchema,
         });
 
-      case "confirmation":
-        return [
-          WhatsAppFormatterService.createConfirmation(
-            object.message,
-            object.orderId,
-          ),
-        ];
+        // Save structured response
+        await whatsAppMessageService.addMessage(
+          session.id,
+          "user",
+          trimmedText,
+        );
+        await whatsAppMessageService.addMessage(
+          session.id,
+          "assistant",
+          JSON.stringify(object),
+        );
 
-      case "product_suggestions":
-        return [
-          WhatsAppFormatterService.createProductSuggestions(
-            object.suggestions,
-            object.clientName,
-          ),
-        ];
-
-      case "client_search":
-        return [
-          WhatsAppFormatterService.createClientSearchResults(object.clients),
-        ];
-
-      default:
-        return [{ text: "Entendido." }];
+        // Convert to WhatsApp messages
+        switch (object.type) {
+          case "greeting":
+            return [
+              { text: WhatsAppFormatterService.formatText(object.message) },
+            ];
+          case "simple":
+            return [
+              { text: WhatsAppFormatterService.formatText(object.content) },
+            ];
+          case "order_creation":
+            return WhatsAppFormatterService.createOrderMessages({
+              clientName: object.clientName,
+              items: object.items.map((item) => ({ ...item, stock: 999 })),
+              recommendations: object.recommendations,
+              total: object.total,
+              orderId: object.orderId,
+            });
+          case "confirmation":
+            return [
+              WhatsAppFormatterService.createConfirmation(
+                object.message,
+                object.orderId,
+              ),
+            ];
+          case "product_suggestions":
+            return [
+              WhatsAppFormatterService.createProductSuggestions(
+                object.suggestions,
+                object.clientName,
+              ),
+            ];
+          case "client_search":
+            return [
+              WhatsAppFormatterService.createClientSearchResults(
+                object.clients,
+              ),
+            ];
+          default:
+            return [
+              { text: WhatsAppFormatterService.formatText(responseText) },
+            ];
+        }
+      } catch (structuredError) {
+        console.log(
+          "Structured response failed, falling back to simple text:",
+          structuredError,
+        );
+        // Fall through to simple response
+      }
     }
+
+    // Save simple response and return formatted text
+    await whatsAppMessageService.addMessage(session.id, "user", trimmedText);
+    await whatsAppMessageService.addMessage(
+      session.id,
+      "assistant",
+      responseText,
+    );
+    return [{ text: WhatsAppFormatterService.formatText(responseText) }];
   } catch (error) {
     console.error("Error in runAgent:", error);
     throw error;
