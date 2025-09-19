@@ -1,4 +1,7 @@
 import { Suspense } from "react";
+
+// Force dynamic rendering since we use headers() for authentication
+export const dynamic = "force-dynamic";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,8 +19,6 @@ import { salespersonService } from "@/services/salesperson.service";
 import { userService } from "@/services/user.service";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-
-export const dynamic = "force-dynamic";
 
 async function VendorsData() {
   try {

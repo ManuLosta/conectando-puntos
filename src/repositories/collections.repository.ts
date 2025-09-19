@@ -290,28 +290,28 @@ class CollectionsRepositoryImpl implements CollectionsRepository {
     return mockCollection;
   }
 
-  async getCollectionById(id: string): Promise<CollectionDetails | null> {
+  async getCollectionById(_id: string): Promise<CollectionDetails | null> {
     // For now, return null until the Collection model is ready
     return null;
   }
 
   async getCollectionsByInvoice(
-    invoiceId: string,
+    _invoiceId: string,
   ): Promise<CollectionDetails[]> {
     // For now, return empty array until the Collection model is ready
     return [];
   }
 
   async getCollectionHistory(
-    distributorId: string,
-    startDate?: Date,
-    endDate?: Date,
+    _distributorId: string,
+    _startDate?: Date,
+    _endDate?: Date,
   ): Promise<CollectionDetails[]> {
     // For now, return empty array until the Collection model is ready
     return [];
   }
 
-  async getCollectionStats(distributorId: string): Promise<{
+  async getCollectionStats(_distributorId: string): Promise<{
     totalCollected: number;
     pendingAmount: number;
     successRate: number;

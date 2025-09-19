@@ -1,4 +1,7 @@
 import { Suspense } from "react";
+
+// Force dynamic rendering since we use headers() for authentication
+export const dynamic = "force-dynamic";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -36,8 +39,6 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { userService } from "@/services/user.service";
 import { RegisterPaymentModal } from "@/components/cobranzas/register-payment-modal";
-
-export const dynamic = "force-dynamic";
 
 function getEstadoBadge(estado: "Vencida" | "Por Vencer" | "Vigente") {
   switch (estado) {
