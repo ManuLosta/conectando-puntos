@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 
-type TabValue = "all" | "low" | "expiring";
+type TabValue = "all" | "low" | "expiring" | "movements";
 
 interface TabsContextValue {
   activeTab: TabValue;

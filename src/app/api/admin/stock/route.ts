@@ -2,18 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { stockService } from "@/services/stock.service";
 import { prisma } from "@/lib/prisma";
+import { userService } from "@/services/user.service";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
 
-    if (!session?.user?.tenantId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Verificar que el usuario es admin
-    const userRole = session.user.role;
-    if (userRole !== "ADMIN") {
+    // Obtener información del usuario y verificar que es admin
+    const userInfo = await userService.getUserTenantInfo(session.user.id);
+
+    if (!userInfo) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 },
+      );
+    }
+
+    // Verificar que el usuario es SUPER_ADMIN o DISTRIBUTOR_ADMIN
+    const isAdmin =
+      userInfo.role === "SUPER_ADMIN" ||
+      userInfo.userTenants.some(
+        (tenant) => tenant.role === "DISTRIBUTOR_ADMIN",
+      );
+
+    if (!isAdmin) {
       return NextResponse.json(
         { error: "Acceso denegado. Solo administradores pueden acceder." },
         { status: 403 },
@@ -31,8 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener todos los productos del distributor con su inventario
-    const products =
-      await stockService.getInventoryByDistributor(distributorId);
+    const products = await stockService.getAllStockByDistributor(distributorId);
 
     return NextResponse.json({ products });
   } catch (error) {
@@ -46,14 +63,32 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
 
-    if (!session?.user?.tenantId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Verificar que el usuario es admin
-    if (session.user.role !== "ADMIN") {
+    // Obtener información del usuario y verificar que es admin
+    const userInfo = await userService.getUserTenantInfo(session.user.id);
+
+    if (!userInfo) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 },
+      );
+    }
+
+    // Verificar que el usuario es SUPER_ADMIN o DISTRIBUTOR_ADMIN
+    const isAdmin =
+      userInfo.role === "SUPER_ADMIN" ||
+      userInfo.userTenants.some(
+        (tenant) => tenant.role === "DISTRIBUTOR_ADMIN",
+      );
+
+    if (!isAdmin) {
       return NextResponse.json(
         {
           error:
@@ -191,14 +226,32 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
 
-    if (!session?.user?.tenantId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Verificar que el usuario es admin
-    if (session.user.role !== "ADMIN") {
+    // Obtener información del usuario y verificar que es admin
+    const userInfo = await userService.getUserTenantInfo(session.user.id);
+
+    if (!userInfo) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 },
+      );
+    }
+
+    // Verificar que el usuario es SUPER_ADMIN o DISTRIBUTOR_ADMIN
+    const isAdmin =
+      userInfo.role === "SUPER_ADMIN" ||
+      userInfo.userTenants.some(
+        (tenant) => tenant.role === "DISTRIBUTOR_ADMIN",
+      );
+
+    if (!isAdmin) {
       return NextResponse.json(
         {
           error:

@@ -49,7 +49,7 @@ export interface CreateProductWithStockData {
   expirationDate: Date;
 }
 
-class StockService {
+export class StockService {
   private prisma: PrismaClient;
 
   constructor() {
@@ -545,6 +545,85 @@ class StockService {
     }
   }
 
+  // Obtener todos los movimientos de stock de una distribuidora
+  async getAllStockMovementsByDistributor(
+    distributorId: string,
+    limit: number = 50,
+    offset: number = 0,
+  ) {
+    try {
+      const movements = await this.prisma.stockMovement.findMany({
+        where: {
+          inventoryItem: {
+            distributorId: distributorId,
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: limit,
+        skip: offset,
+        include: {
+          inventoryItem: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  sku: true,
+                },
+              },
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+            },
+          },
+        },
+      });
+
+      // Obtener el total de movimientos para paginación
+      const total = await this.prisma.stockMovement.count({
+        where: {
+          inventoryItem: {
+            distributorId: distributorId,
+          },
+        },
+      });
+
+      return {
+        movements: movements.map((movement) => ({
+          id: movement.id,
+          type: movement.type,
+          quantity: movement.quantity,
+          previousStock: movement.previousStock,
+          newStock: movement.newStock,
+          reason: movement.reason,
+          createdAt: movement.createdAt,
+          product: {
+            id: movement.inventoryItem.product.id,
+            name: movement.inventoryItem.product.name,
+            sku: movement.inventoryItem.product.sku,
+          },
+          lotNumber: movement.inventoryItem.lotNumber,
+          order: movement.order
+            ? {
+                id: movement.order.id,
+                orderNumber: movement.order.orderNumber,
+              }
+            : null,
+        })),
+        total,
+        hasMore: offset + limit < total,
+      };
+    } catch (error) {
+      console.error("Error fetching all stock movements:", error);
+      throw new Error("Failed to fetch stock movements");
+    }
+  }
+
   // Obtener stock total de un producto (suma de todos los lotes)
   async getTotalStockForProduct(
     distributorId: string,
@@ -756,6 +835,64 @@ class StockService {
       return result;
     } catch (error) {
       console.error("Error adding stock to product:", error);
+      throw error;
+    }
+  }
+
+  // Eliminar producto (soft delete - marcar como inactivo)
+  async deleteProduct(productId: string, distributorId: string): Promise<void> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Verificar que el producto pertenece a la distribuidora
+        const product = await tx.product.findFirst({
+          where: {
+            id: productId,
+            distributorId: distributorId,
+          },
+        });
+
+        if (!product) {
+          throw new Error(
+            "Producto no encontrado o no pertenece a esta distribuidora",
+          );
+        }
+
+        // Marcar el producto como inactivo (soft delete)
+        await tx.product.update({
+          where: { id: productId },
+          data: { isActive: false },
+        });
+
+        // Crear movimientos de salida para todo el stock restante
+        const inventoryItems = await tx.inventoryItem.findMany({
+          where: {
+            productId: productId,
+            stock: { gt: 0 },
+          },
+        });
+
+        for (const item of inventoryItems) {
+          // Crear movimiento de ajuste a 0
+          await tx.stockMovement.create({
+            data: {
+              inventoryItemId: item.id,
+              type: "ADJUSTMENT",
+              quantity: 0,
+              previousStock: item.stock,
+              newStock: 0,
+              reason: "Producto eliminado",
+            },
+          });
+
+          // Actualizar el stock a 0
+          await tx.inventoryItem.update({
+            where: { id: item.id },
+            data: { stock: 0 },
+          });
+        }
+      });
+    } catch (error) {
+      console.error("Error deleting product:", error);
       throw error;
     }
   }

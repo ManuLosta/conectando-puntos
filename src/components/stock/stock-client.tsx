@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { StockTable } from "./stock-table";
+import { NewStockModal } from "./new-stock-modal";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Loader2 } from "lucide-react";
+import { Plus, Search, Loader2, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 // Hook useDebounce inline para evitar problemas de importación
@@ -55,6 +56,7 @@ export function StockClient({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [lastSearchQuery, setLastSearchQuery] = useState("");
+  const [isNewStockModalOpen, setIsNewStockModalOpen] = useState(false);
 
   // Debounce search query to avoid too many requests
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
@@ -115,11 +117,6 @@ export function StockClient({
     setLastSearchQuery("");
   }, [stockType, initialStockItems]);
 
-  const handleStockMovement = () => {
-    // Funcionalidad de movimiento de stock (por implementar)
-    alert("Funcionalidad de movimiento de stock en desarrollo");
-  };
-
   const handleItemSelection = (itemId: string, isSelected: boolean) => {
     if (isSelected) {
       setSelectedItems([...selectedItems, itemId]);
@@ -146,9 +143,9 @@ export function StockClient({
     alert("Funcionalidad de reporte en desarrollo");
   };
 
-  const handleItemClick = () => {
-    // TODO: Implementar lógica para mostrar detalles del item
-    console.log("Item clicked");
+  const handleStockUpdated = () => {
+    // Recargar los datos del stock
+    window.location.reload(); // Por ahora, una recarga simple
   };
 
   return (
@@ -209,6 +206,14 @@ export function StockClient({
             </>
           )}
           <Button
+            onClick={() => setIsNewStockModalOpen(true)}
+            variant="outline"
+            className="border-green-200 text-green-700 hover:bg-green-50"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Nuevo Stock
+          </Button>
+          <Button
             onClick={() => {
               alert("Funcionalidad de nuevo producto en desarrollo");
             }}
@@ -237,7 +242,7 @@ export function StockClient({
           selectedItems={selectedItems}
           onItemSelectionChange={handleItemSelection}
           onSelectAllChange={handleSelectAll}
-          onStockMovement={handleStockMovement}
+          onStockUpdated={handleStockUpdated}
         />
 
         {/* Mensaje cuando no hay resultados */}
@@ -256,6 +261,14 @@ export function StockClient({
             </div>
           )}
       </div>
+
+      {/* Modal de Nuevo Stock */}
+      <NewStockModal
+        isOpen={isNewStockModalOpen}
+        onClose={() => setIsNewStockModalOpen(false)}
+        onStockCreated={handleStockUpdated}
+        distributorId="TEMP_DISTRIBUTOR_ID" // TODO: Obtener del contexto o props
+      />
     </div>
   );
 }

@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { StockTable } from "./stock-table";
 import { NewProductModal } from "./new-product-modal";
+import { AddStockModal } from "./add-stock-modal";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Loader2 } from "lucide-react";
+import { Plus, Search, Loader2, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useTabsStore } from "./tabs-store";
 
@@ -89,6 +90,7 @@ export function StockClientOptimized({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
+  const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false);
   const { activeTab } = useTabsStore();
 
   // Debounce search query
@@ -121,10 +123,6 @@ export function StockClientOptimized({
     setSelectedItems([]);
   }, [activeTab]);
 
-  const handleStockMovement = () => {
-    alert("Funcionalidad de movimiento de stock en desarrollo");
-  };
-
   const handleItemSelection = (itemId: string, isSelected: boolean) => {
     if (isSelected) {
       setSelectedItems((prev) => [...prev, itemId]);
@@ -153,6 +151,23 @@ export function StockClientOptimized({
 
   const handleProductCreated = () => {
     console.log("Producto creado exitosamente");
+    // Recargar la página para mostrar los datos actualizados
+    window.location.reload();
+  };
+
+  const handleOpenAddStockModal = () => {
+    // Si no hay productos, mostrar alerta
+    if (filteredStock.length === 0) {
+      alert("No hay productos disponibles para agregar stock");
+      return;
+    }
+
+    // Abrir el modal con todos los productos disponibles
+    setIsAddStockModalOpen(true);
+  };
+
+  const handleStockUpdated = () => {
+    console.log("Stock actualizado exitosamente");
     // Recargar la página para mostrar los datos actualizados
     window.location.reload();
   };
@@ -214,6 +229,14 @@ export function StockClientOptimized({
             </>
           )}
           <Button
+            onClick={handleOpenAddStockModal}
+            variant="outline"
+            className="border-green-200 text-green-700 hover:bg-green-50"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Agregar Stock
+          </Button>
+          <Button
             onClick={() => setIsNewProductModalOpen(true)}
             className="bg-blue-600 hover:bg-blue-700"
           >
@@ -227,11 +250,12 @@ export function StockClientOptimized({
       <div className="relative">
         <StockTable
           stockItems={filteredStock}
+          distributorId={distributorId}
           showBulkActions={showBulkActions}
           selectedItems={selectedItems}
           onItemSelectionChange={handleItemSelection}
           onSelectAllChange={handleSelectAll}
-          onStockMovement={handleStockMovement}
+          onStockUpdated={handleStockUpdated}
         />
 
         {/* Mensaje cuando no hay resultados */}
@@ -257,6 +281,14 @@ export function StockClientOptimized({
         onClose={() => setIsNewProductModalOpen(false)}
         onProductCreated={handleProductCreated}
         distributorId={distributorId}
+      />
+
+      {/* Modal de agregar stock */}
+      <AddStockModal
+        stockItems={filteredStock}
+        isOpen={isAddStockModalOpen}
+        onClose={() => setIsAddStockModalOpen(false)}
+        onStockUpdated={handleStockUpdated}
       />
     </div>
   );
