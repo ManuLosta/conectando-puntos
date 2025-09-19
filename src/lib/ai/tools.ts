@@ -4,35 +4,6 @@ import { orderService } from "@/services/order.service";
 import { customerService } from "@/services/customer.service";
 import { stockService } from "@/services/stock.service";
 import { suggestionService } from "@/services/suggestion.service";
-// import { suggestionService } from "@/services/suggestion.service";
-
-export const buscarProductos = tool({
-  description: "Busca productos en el inventario de la distribuidora.",
-  inputSchema: z
-    .object({
-      query: z.string().describe("Texto de búsqueda para productos"),
-    })
-    .strict(),
-  execute: async ({ query }, { experimental_context }) => {
-    const { distributorId } = experimental_context as {
-      distributorId: string;
-      phoneNumber: string;
-      salespersonId: string;
-    };
-    // Por ahora, obtenemos todos los productos y filtramos por query
-    const allStockResult =
-      await stockService.getAllStockByDistributor(distributorId);
-    const allStock = Array.isArray(allStockResult)
-      ? allStockResult
-      : allStockResult.items;
-    const filteredStock = allStock.filter(
-      (item) =>
-        item.product.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.product.sku.toLowerCase().includes(query.toLowerCase()),
-    );
-    return filteredStock;
-  },
-});
 
 export const consultarStock = tool({
   description:
@@ -214,7 +185,6 @@ export const obtenerOrden = tool({
 });
 
 export const tools = {
-  buscarProductos,
   consultarStock,
   crearOrden,
   confirmarOrden,
