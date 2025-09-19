@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const { messages, phone }: { messages: UIMessage[]; phone?: string } =
     await req.json();
 
-  const phoneNumber = phone || "541133837591";
+  const phoneNumber = phone || "+5491136608202";
 
   try {
     // Get distributor ID and salesperson info for this phone number

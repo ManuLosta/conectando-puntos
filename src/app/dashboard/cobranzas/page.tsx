@@ -28,10 +28,10 @@ import {
   Search,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { cobranzasService } from "@/services/cobranzas.service";
+import { collectionsService } from "@/services/cobranzas.service";
 import type {
-  CobranzasMetrics,
-  FacturaCobranza,
+  CollectionsMetrics,
+  InvoiceCollection,
 } from "@/services/cobranzas.service";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -105,7 +105,8 @@ async function CobranzasMetricsSection() {
       throw new Error("No distributor found for user");
     }
 
-    const metrics = await cobranzasService.getCobranzasMetrics(distributorId);
+    const metrics =
+      await collectionsService.getCollectionsMetrics(distributorId);
     return <CobranzasMetricsDisplay metrics={metrics} />;
   } catch (error) {
     console.error("Error fetching metrics:", error);
@@ -157,7 +158,8 @@ async function CobranzasData() {
       throw new Error("No distributor found for user");
     }
 
-    const facturas = await cobranzasService.getFacturasCobranza(distributorId);
+    const facturas =
+      await collectionsService.getInvoicesForCollection(distributorId);
     return <CobranzasTableDisplay facturas={facturas} />;
   } catch (error) {
     console.error("Error fetching cobranzas data:", error);
@@ -189,7 +191,7 @@ async function CobranzasData() {
   }
 }
 
-function CobranzasMetricsDisplay({ metrics }: { metrics: CobranzasMetrics }) {
+function CobranzasMetricsDisplay({ metrics }: { metrics: CollectionsMetrics }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
       <Card>
@@ -269,7 +271,11 @@ function CobranzasMetricsDisplay({ metrics }: { metrics: CobranzasMetrics }) {
   );
 }
 
-function CobranzasTableDisplay({ facturas }: { facturas: FacturaCobranza[] }) {
+function CobranzasTableDisplay({
+  facturas,
+}: {
+  facturas: InvoiceCollection[];
+}) {
   return (
     <Card>
       <CardHeader>
@@ -296,9 +302,11 @@ function CobranzasTableDisplay({ facturas }: { facturas: FacturaCobranza[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {facturas.map((factura: FacturaCobranza) => (
+            {facturas.map((factura: InvoiceCollection) => (
               <TableRow key={factura.id}>
-                <TableCell className="font-medium">{factura.id}</TableCell>
+                <TableCell className="font-medium">
+                  {factura.invoiceNumber}
+                </TableCell>
                 <TableCell>{factura.cliente}</TableCell>
                 <TableCell>{factura.vencimiento}</TableCell>
                 <TableCell className={getDiasColor(factura.dias)}>
