@@ -80,33 +80,62 @@ function separateTextAndJson(text: string): {
   cleanText: string;
   jsonData?: Record<string, unknown>;
 } {
+  // Primero, limpiar caracteres de escape
+  const cleanedText = text.replace(/\\n/g, "\n").replace(/\\"/g, '"');
+
   try {
     // Si todo el texto es JSON válido, retornarlo
-    const fullJson = JSON.parse(text);
+    const fullJson = JSON.parse(cleanedText);
     return { cleanText: "", jsonData: fullJson };
   } catch {
     // No es JSON puro, continuar
   }
 
-  // Buscar el primer { y el último } para extraer JSON potencial
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
+  // Buscar patrones de JSON al final del texto después de saltos de línea
+  const lines = cleanedText.split("\n");
+  let jsonData: Record<string, unknown> | undefined;
+  let textLines: string[] = [];
 
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    const potentialJson = text.substring(firstBrace, lastBrace + 1);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
 
-    try {
-      const jsonData = JSON.parse(potentialJson);
-      // Si parseó correctamente, extraer el texto antes del JSON
-      const cleanText = text.substring(0, firstBrace).trim();
-      return { cleanText, jsonData };
-    } catch {
-      // JSON malformado, ignorarlo
+    // Si la línea parece JSON (empieza con { y termina con })
+    if (line.startsWith("{") && line.endsWith("}")) {
+      try {
+        jsonData = JSON.parse(line);
+        // Si se parseó correctamente, todas las líneas anteriores son texto
+        textLines = lines.slice(0, i);
+        break;
+      } catch {
+        // No es JSON válido, continuar
+        textLines.unshift(lines[i]);
+      }
+    } else if (line.length > 0) {
+      // Línea con contenido que no es JSON
+      textLines.unshift(lines[i]);
     }
   }
 
-  // No hay JSON válido, devolver todo como texto limpio
-  return { cleanText: text };
+  // Si no encontramos JSON, buscar con el método anterior
+  if (!jsonData) {
+    const firstBrace = cleanedText.indexOf("{");
+    const lastBrace = cleanedText.lastIndexOf("}");
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const potentialJson = cleanedText.substring(firstBrace, lastBrace + 1);
+
+      try {
+        jsonData = JSON.parse(potentialJson);
+        const cleanText = cleanedText.substring(0, firstBrace).trim();
+        return { cleanText, jsonData };
+      } catch {
+        // JSON malformado, ignorarlo
+      }
+    }
+  }
+
+  const cleanText = textLines.join("\n").trim();
+  return { cleanText, jsonData };
 }
 
 export async function runAgent({
