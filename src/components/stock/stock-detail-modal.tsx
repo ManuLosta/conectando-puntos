@@ -26,7 +26,7 @@ interface StockItem {
   productId: string;
   name: string;
   sku: string;
-  description?: string;
+  description?: string | null;
   price: number;
   discountedPrice?: number;
   stock: number;

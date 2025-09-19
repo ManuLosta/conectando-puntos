@@ -106,14 +106,12 @@ function OrdersSection({
   orders,
   title,
   icon: Icon,
-  description,
   emptyMessage,
   showBulkActions = false,
 }: {
   orders: ProcessedOrder[];
   title: string;
   icon: React.ComponentType<{ className?: string }>;
-  description: string;
   emptyMessage: string;
   showBulkActions?: boolean;
 }) {
@@ -212,7 +210,6 @@ export default async function PedidosPage() {
                 orders={allOrders}
                 title="Todos los Pedidos"
                 icon={Package}
-                description="Vista completa de todos los pedidos del sistema"
                 emptyMessage="No hay pedidos registrados"
               />
             </TabsContent>
@@ -222,7 +219,6 @@ export default async function PedidosPage() {
                 orders={pendingOrders}
                 title="Pedidos por Confirmar"
                 icon={Clock}
-                description="Pedidos pendientes que necesitan confirmación"
                 emptyMessage="No hay pedidos pendientes de confirmar"
                 showBulkActions={true}
               />
@@ -233,7 +229,6 @@ export default async function PedidosPage() {
                 orders={ordersToShip}
                 title="Pedidos por Enviar"
                 icon={Truck}
-                description="Pedidos confirmados y en preparación listos para envío"
                 emptyMessage="No hay pedidos listos para enviar"
                 showBulkActions={true}
               />

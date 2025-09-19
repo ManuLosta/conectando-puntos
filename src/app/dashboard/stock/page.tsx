@@ -54,7 +54,7 @@ function transformStockData(
 }
 
 // Funciones de filtrado para el frontend
-export function getStockCategories(allStock: ProcessedStockItem[]) {
+function getStockCategories(allStock: ProcessedStockItem[]) {
   const lowThreshold = 10;
   const daysFromNow = 30;
   const futureDate = new Date();

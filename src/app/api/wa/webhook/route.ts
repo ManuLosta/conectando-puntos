@@ -3,7 +3,6 @@ import {
   WhatsAppMessage,
   WhatsAppWebhookBody,
   WhatsAppFormattedResponse,
-  WhatsAppInteractiveMessage,
 } from "@/types/whatsapp";
 import { runAgent } from "@/services/agent.service";
 import { WhatsAppFormattedMessage } from "@/services/whatsapp-formatter.service";
