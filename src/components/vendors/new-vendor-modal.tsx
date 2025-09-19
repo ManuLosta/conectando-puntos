@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ interface NewVendorModalProps {
 }
 
 export function NewVendorModal({ onVendorAdded }: NewVendorModalProps) {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -39,7 +41,11 @@ export function NewVendorModal({ onVendorAdded }: NewVendorModalProps) {
       // For now, just simulate the API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      alert("Vendedor creado exitosamente");
+      toast({
+        variant: "success",
+        title: "Vendedor creado",
+        description: "El vendedor se ha creado exitosamente",
+      });
       setOpen(false);
       setFormData({
         name: "",
@@ -52,7 +58,11 @@ export function NewVendorModal({ onVendorAdded }: NewVendorModalProps) {
         onVendorAdded();
       }
     } catch (error) {
-      alert("Error al crear el vendedor");
+      toast({
+        variant: "destructive",
+        title: "Error al crear el vendedor",
+        description: "Ocurrió un error al crear el vendedor",
+      });
       console.error("Error creating vendor:", error);
     } finally {
       setLoading(false);

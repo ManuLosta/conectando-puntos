@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 // Force dynamic rendering since we use headers() for authentication
 export const dynamic = "force-dynamic";
+export const revalidate = 0; // Always fetch fresh data
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,9 +12,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,13 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertTriangle,
-  Clock,
-  CheckCircle,
-  DollarSign,
-  Search,
-} from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { collectionsService } from "@/services/cobranzas.service";
 import type {
@@ -39,6 +33,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { userService } from "@/services/user.service";
 import { RegisterPaymentModal } from "@/components/cobranzas/register-payment-modal";
+import { ContactButton } from "@/components/cobranzas/contact-button";
 
 function getEstadoBadge(estado: "Vencida" | "Por Vencer" | "Vigente") {
   switch (estado) {
@@ -297,7 +292,9 @@ function CobranzasTableDisplay({
               <TableHead>Vencimiento</TableHead>
               <TableHead>Días</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">Pagado</TableHead>
+              <TableHead className="text-right">Pendiente</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -313,14 +310,23 @@ function CobranzasTableDisplay({
                   {factura.dias > 0 ? `+${factura.dias}` : factura.dias}
                 </TableCell>
                 <TableCell>{getEstadoBadge(factura.estado)}</TableCell>
-                <TableCell className="text-right font-medium">
+                <TableCell className="text-right font-medium text-muted-foreground">
                   {formatCurrency(factura.monto)}
                 </TableCell>
+                <TableCell className="text-right font-medium text-green-600">
+                  {formatCurrency(factura.montoPagado)}
+                </TableCell>
+                <TableCell className="text-right font-medium text-orange-600">
+                  {formatCurrency(factura.montoPendiente)}
+                </TableCell>
                 <TableCell>
-                  <Button variant="outline" size="sm">
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    Contactar
-                  </Button>
+                  <ContactButton
+                    clientName={factura.cliente}
+                    clientPhone={factura.clientPhone}
+                    clientEmail={factura.clientEmail}
+                    invoiceNumber={factura.invoiceNumber}
+                    pendingAmount={factura.montoPendiente}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -367,24 +373,6 @@ export default async function CobranzasPage() {
           <Suspense fallback={<CobranzasMetricsLoading />}>
             <CobranzasMetricsSection />
           </Suspense>
-
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filtros y Búsqueda</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4 items-center">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por factura, cliente..."
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Cobranzas Table */}
           <Card>

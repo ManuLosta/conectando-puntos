@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { PaymentType, CollectionStatus } from "@prisma/client";
 
 export interface CollectionsMetrics {
   facturasVencidas: {
@@ -27,6 +28,8 @@ export interface InvoiceCollection {
   id: string;
   invoiceNumber: string;
   cliente: string;
+  clientPhone?: string;
+  clientEmail?: string;
   vencimiento: string;
   dias: number;
   estado: "Vencida" | "Por Vencer" | "Vigente";
@@ -39,17 +42,17 @@ export interface CreateCollectionData {
   collectionNumber: string;
   invoiceId: string;
   amountPaid: number;
-  paymentType: string;
+  paymentType: PaymentType;
   notes?: string;
   collectionDate: Date;
-  status: string;
+  status: CollectionStatus;
 }
 
 export interface UpdateCollectionData {
-  status?: string;
+  status?: CollectionStatus;
   notes?: string;
   amountPaid?: number;
-  paymentType?: string;
+  paymentType?: PaymentType;
 }
 
 export interface CollectionDetails {
@@ -57,10 +60,10 @@ export interface CollectionDetails {
   collectionNumber: string;
   invoiceId: string;
   amountPaid: number;
-  paymentType: string;
+  paymentType: PaymentType;
   notes?: string;
   collectionDate: Date;
-  status: string;
+  status: CollectionStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,106 +97,99 @@ class CollectionsRepositoryImpl implements CollectionsRepository {
   ): Promise<CollectionsMetrics> {
     const today = new Date();
 
-    // Since the new schema entities might not be fully available yet,
-    // let's use order-based queries with the updated logic
-
-    // Facturas Vencidas (overdue invoices)
-    const facturasVencidas = await prisma.order.aggregate({
+    // Get ALL invoices from confirmed orders that are not fully paid
+    const invoices = await prisma.invoice.findMany({
       where: {
         distributorId,
-        paymentStatus: {
-          in: ["PENDING", "PARTIAL"],
+        status: {
+          not: "PAID", // Exclude fully paid invoices
         },
-        createdAt: {
-          lt: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+        order: {
+          status: "CONFIRMED", // Only confirmed orders
         },
       },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        total: true,
+      include: {
+        collections: {
+          where: {
+            status: {
+              in: ["PENDING", "PARTIAL", "COMPLETED"],
+            },
+          },
+        },
       },
     });
 
-    // Por Vencer (due within 7 days) - orders from last week
-    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    // Initialize counters
+    const facturasVencidas = { count: 0, amount: 0 };
+    const porVencer = { count: 0, amount: 0 };
+    const vigentes = { count: 0, amount: 0 };
+    const totalACobrar = { count: 0, amount: 0 };
 
-    const porVencer = await prisma.order.aggregate({
-      where: {
-        distributorId,
-        paymentStatus: {
-          in: ["PENDING", "PARTIAL"],
-        },
-        createdAt: {
-          gte: sevenDaysAgo,
-          lt: thirtyDaysAgo,
-        },
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        total: true,
-      },
-    });
+    // Process each invoice to determine its collection status
+    invoices.forEach((invoice) => {
+      const invoiceTotal = Number(invoice.total);
 
-    // Vigentes (current invoices) - recent orders
-    const vigentes = await prisma.order.aggregate({
-      where: {
-        distributorId,
-        paymentStatus: {
-          in: ["PENDING", "PARTIAL"],
-        },
-        createdAt: {
-          gte: sevenDaysAgo,
-        },
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        total: true,
-      },
-    });
+      // Calculate total paid from completed and partial collections
+      const totalPaid = invoice.collections.reduce((sum, collection) => {
+        if (
+          collection.status === "COMPLETED" ||
+          collection.status === "PARTIAL"
+        ) {
+          return sum + Number(collection.amountPaid);
+        }
+        return sum;
+      }, 0);
 
-    // Total a Cobrar (all unpaid orders)
-    const totalACobrar = await prisma.order.aggregate({
-      where: {
-        distributorId,
-        paymentStatus: {
-          in: ["PENDING", "PARTIAL"],
-        },
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        total: true,
-      },
+      // Skip if fully paid
+      if (totalPaid >= invoiceTotal) {
+        return;
+      }
+
+      const pendingAmount = invoiceTotal - totalPaid;
+
+      // Categorize based on due date
+      const timeDiff = invoice.dueDate.getTime() - today.getTime();
+      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+      if (daysDiff < 0) {
+        // Overdue
+        facturasVencidas.count++;
+        facturasVencidas.amount += pendingAmount;
+      } else if (daysDiff <= 7) {
+        // Due within 7 days
+        porVencer.count++;
+        porVencer.amount += pendingAmount;
+      } else {
+        // Future due date
+        vigentes.count++;
+        vigentes.amount += pendingAmount;
+      }
+
+      // Add to total
+      totalACobrar.count++;
+      totalACobrar.amount += pendingAmount;
     });
 
     return {
       facturasVencidas: {
-        count: facturasVencidas._count.id,
-        amount: Number(facturasVencidas._sum.total || 0),
-        items: `${facturasVencidas._count.id} facturas vencidas`,
+        count: facturasVencidas.count,
+        amount: facturasVencidas.amount,
+        items: `${facturasVencidas.count} facturas vencidas`,
       },
       porVencer: {
-        count: porVencer._count.id,
-        amount: Number(porVencer._sum.total || 0),
-        items: `${porVencer._count.id} factura${porVencer._count.id !== 1 ? "s" : ""} próxima${porVencer._count.id !== 1 ? "s" : ""} a vencer`,
+        count: porVencer.count,
+        amount: porVencer.amount,
+        items: `${porVencer.count} factura${porVencer.count !== 1 ? "s" : ""} próxima${porVencer.count !== 1 ? "s" : ""} a vencer`,
       },
       vigentes: {
-        count: vigentes._count.id,
-        amount: Number(vigentes._sum.total || 0),
-        items: `${vigentes._count.id} factura${vigentes._count.id !== 1 ? "s" : ""} vigente${vigentes._count.id !== 1 ? "s" : ""}`,
+        count: vigentes.count,
+        amount: vigentes.amount,
+        items: `${vigentes.count} factura${vigentes.count !== 1 ? "s" : ""} vigente${vigentes.count !== 1 ? "s" : ""}`,
       },
       totalACobrar: {
-        count: totalACobrar._count.id,
-        amount: Number(totalACobrar._sum.total || 0),
-        items: `${totalACobrar._count.id} facturas pendientes`,
+        count: totalACobrar.count,
+        amount: totalACobrar.amount,
+        items: `${totalACobrar.count} facturas pendientes`,
       },
     };
   }
@@ -201,128 +197,411 @@ class CollectionsRepositoryImpl implements CollectionsRepository {
   async getInvoicesForCollection(
     distributorId: string,
   ): Promise<InvoiceCollection[]> {
-    // For now, use orders until Invoice/Collection models are fully ready
-    const orders = await prisma.order.findMany({
+    console.log("REPO: Getting invoices for distributor:", distributorId);
+
+    // Get ALL invoices from confirmed orders (including those without collections yet)
+    const invoices = await prisma.invoice.findMany({
       where: {
         distributorId,
-        paymentStatus: {
-          in: ["PENDING", "PARTIAL"],
+        status: {
+          not: "PAID", // Exclude fully paid invoices
+        },
+        order: {
+          status: "CONFIRMED", // Only confirmed orders
         },
       },
       include: {
         client: true,
+        order: {
+          include: {
+            client: true,
+          },
+        },
+        collections: true, // Get all collections (not filtered)
       },
       orderBy: {
-        createdAt: "desc",
+        dueDate: "asc",
       },
     });
+
+    console.log("REPO: Found raw invoices:", invoices.length);
 
     const today = new Date();
 
-    return orders.map((order) => {
-      // Calculate days since order creation
-      const timeDiff = today.getTime() - order.createdAt.getTime();
-      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    return invoices
+      .map((invoice) => {
+        // Calculate days until/since due date
+        const timeDiff = invoice.dueDate.getTime() - today.getTime();
+        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-      let estado: "Vencida" | "Por Vencer" | "Vigente";
-      if (daysDiff > 30) {
-        estado = "Vencida";
-      } else if (daysDiff > 7) {
-        estado = "Por Vencer";
-      } else {
-        estado = "Vigente";
-      }
+        let estado: "Vencida" | "Por Vencer" | "Vigente";
+        if (daysDiff < 0) {
+          estado = "Vencida";
+        } else if (daysDiff <= 7) {
+          estado = "Por Vencer";
+        } else {
+          estado = "Vigente";
+        }
 
-      // For now, assume full amount is pending
-      const montoPagado =
-        order.paymentStatus === "PARTIAL" ? Number(order.total) * 0.5 : 0;
+        // Calculate total paid from completed and partial collections
+        const montoPagado = invoice.collections.reduce((total, collection) => {
+          if (
+            collection.status === "COMPLETED" ||
+            collection.status === "PARTIAL"
+          ) {
+            return total + Number(collection.amountPaid);
+          }
+          return total;
+        }, 0);
 
-      return {
-        id: order.orderNumber,
-        invoiceNumber: order.orderNumber,
-        cliente: order.client?.name || "Cliente no especificado",
-        vencimiento: order.createdAt.toISOString().split("T")[0],
-        dias: daysDiff,
-        estado,
-        monto: Number(order.total),
-        montoPendiente: Number(order.total) - montoPagado,
-        montoPagado,
-      };
-    });
+        const monto = Number(invoice.total);
+        const montoPendiente = monto - montoPagado;
+
+        const client = invoice.client || invoice.order.client;
+
+        return {
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          cliente: client?.name || "Cliente no especificado",
+          clientPhone: client?.phone || undefined,
+          clientEmail: client?.email || undefined,
+          vencimiento: invoice.dueDate.toISOString().split("T")[0],
+          dias: daysDiff,
+          estado,
+          monto,
+          montoPendiente,
+          montoPagado,
+        };
+      })
+      .filter((invoice) => invoice.montoPendiente > 0); // Only return invoices with pending amounts
   }
 
   async createCollection(
     data: CreateCollectionData,
   ): Promise<CollectionDetails> {
-    // For now, return a mock implementation until the Collection model is ready
-    const mockCollection: CollectionDetails = {
-      id: `col-${Date.now()}`,
-      collectionNumber: data.collectionNumber,
-      invoiceId: data.invoiceId,
-      amountPaid: data.amountPaid,
-      paymentType: data.paymentType,
-      notes: data.notes,
-      collectionDate: data.collectionDate,
-      status: data.status,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // Get invoice to determine distributor and amount due
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: data.invoiceId },
+      include: { collections: true },
+    });
+
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+
+    // Calculate remaining amount due
+    const totalPaid = invoice.collections.reduce(
+      (sum, collection) => sum + Number(collection.amountPaid),
+      0,
+    );
+    const amountDue = Number(invoice.total) - totalPaid;
+
+    // Use a transaction to create collection and update invoice status
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the collection
+      const collection = await tx.collection.create({
+        data: {
+          collectionNumber: data.collectionNumber,
+          invoiceId: data.invoiceId,
+          distributorId: invoice.distributorId,
+          amountDue: amountDue,
+          amountPaid: data.amountPaid,
+          collectionDate: data.collectionDate,
+          dueDate: invoice.dueDate,
+          paymentType: data.paymentType,
+          status: data.status,
+          notes: data.notes,
+        },
+      });
+
+      // Calculate new total paid including this collection
+      const newTotalPaid = totalPaid + data.amountPaid;
+      const invoiceTotal = Number(invoice.total);
+
+      // Update collection and invoice status based on payment amount
+      let collectionStatus = data.status;
+      let invoiceStatus = invoice.status;
+
+      if (newTotalPaid >= invoiceTotal) {
+        // Full payment
+        collectionStatus = "COMPLETED";
+        invoiceStatus = "PAID";
+      } else if (data.amountPaid < amountDue) {
+        // Partial payment
+        collectionStatus = "PARTIAL";
+        invoiceStatus = "PENDING";
+      } else {
+        // Complete payment for this collection but may be partial for invoice
+        collectionStatus = "COMPLETED";
+        invoiceStatus = newTotalPaid >= invoiceTotal ? "PAID" : "PENDING";
+      }
+
+      // Update collection status
+      let updatedCollection = collection;
+      if (collectionStatus !== collection.status) {
+        updatedCollection = await tx.collection.update({
+          where: { id: collection.id },
+          data: { status: collectionStatus },
+        });
+      }
+
+      // Update invoice status
+      if (invoiceStatus !== invoice.status) {
+        await tx.invoice.update({
+          where: { id: data.invoiceId },
+          data: { status: invoiceStatus },
+        });
+      }
+
+      return updatedCollection;
+    });
+
+    return {
+      id: result.id,
+      collectionNumber: result.collectionNumber,
+      invoiceId: result.invoiceId,
+      amountPaid: Number(result.amountPaid),
+      paymentType: result.paymentType || PaymentType.CASH,
+      notes: result.notes || undefined,
+      collectionDate: result.collectionDate,
+      status: result.status,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
     };
-    return mockCollection;
   }
 
   async updateCollection(
     id: string,
     data: UpdateCollectionData,
   ): Promise<CollectionDetails> {
-    // For now, return a mock implementation
-    const mockCollection: CollectionDetails = {
-      id,
-      collectionNumber: `COL-${id}`,
-      invoiceId: "mock-invoice",
-      amountPaid: data.amountPaid || 0,
-      paymentType: data.paymentType || "CASH",
-      notes: data.notes,
-      collectionDate: new Date(),
-      status: data.status || "PENDING",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const updateData: {
+      status?: CollectionStatus;
+      notes?: string;
+      amountPaid?: number;
+      paymentType?: PaymentType;
+    } = {};
+
+    if (data.status) updateData.status = data.status;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.amountPaid !== undefined) updateData.amountPaid = data.amountPaid;
+    if (data.paymentType) updateData.paymentType = data.paymentType;
+
+    // Use transaction to update collection and potentially invoice status
+    const result = await prisma.$transaction(async (tx) => {
+      // Update the collection
+      const collection = await tx.collection.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // If amount was updated, check if invoice should be marked as paid
+      if (data.amountPaid !== undefined) {
+        // Get the invoice and all its collections
+        const invoice = await tx.invoice.findUnique({
+          where: { id: collection.invoiceId },
+          include: { collections: true },
+        });
+
+        if (invoice) {
+          // Calculate total paid from all collections
+          const totalPaid = invoice.collections.reduce(
+            (sum, col) => sum + Number(col.amountPaid),
+            0,
+          );
+          const invoiceTotal = Number(invoice.total);
+
+          // Update invoice status based on payment
+          if (totalPaid >= invoiceTotal && invoice.status !== "PAID") {
+            await tx.invoice.update({
+              where: { id: invoice.id },
+              data: { status: "PAID" },
+            });
+          } else if (totalPaid < invoiceTotal && invoice.status === "PAID") {
+            await tx.invoice.update({
+              where: { id: invoice.id },
+              data: { status: "PENDING" },
+            });
+          }
+        }
+      }
+
+      return collection;
+    });
+
+    return {
+      id: result.id,
+      collectionNumber: result.collectionNumber,
+      invoiceId: result.invoiceId,
+      amountPaid: Number(result.amountPaid),
+      paymentType: result.paymentType || PaymentType.CASH,
+      notes: result.notes || undefined,
+      collectionDate: result.collectionDate,
+      status: result.status,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
     };
-    return mockCollection;
   }
 
-  async getCollectionById(_id: string): Promise<CollectionDetails | null> {
-    // For now, return null until the Collection model is ready
-    return null;
+  async getCollectionById(id: string): Promise<CollectionDetails | null> {
+    const collection = await prisma.collection.findUnique({
+      where: { id },
+    });
+
+    if (!collection) return null;
+
+    return {
+      id: collection.id,
+      collectionNumber: collection.collectionNumber,
+      invoiceId: collection.invoiceId,
+      amountPaid: Number(collection.amountPaid),
+      paymentType: collection.paymentType || PaymentType.CASH,
+      notes: collection.notes || undefined,
+      collectionDate: collection.collectionDate,
+      status: collection.status,
+      createdAt: collection.createdAt,
+      updatedAt: collection.updatedAt,
+    };
   }
 
   async getCollectionsByInvoice(
-    _invoiceId: string,
+    invoiceId: string,
   ): Promise<CollectionDetails[]> {
-    // For now, return empty array until the Collection model is ready
-    return [];
+    const collections = await prisma.collection.findMany({
+      where: { invoiceId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return collections.map((collection) => ({
+      id: collection.id,
+      collectionNumber: collection.collectionNumber,
+      invoiceId: collection.invoiceId,
+      amountPaid: Number(collection.amountPaid),
+      paymentType: collection.paymentType || PaymentType.CASH,
+      notes: collection.notes || undefined,
+      collectionDate: collection.collectionDate,
+      status: collection.status,
+      createdAt: collection.createdAt,
+      updatedAt: collection.updatedAt,
+    }));
   }
 
   async getCollectionHistory(
-    _distributorId: string,
-    _startDate?: Date,
-    _endDate?: Date,
+    distributorId: string,
+    startDate?: Date,
+    endDate?: Date,
   ): Promise<CollectionDetails[]> {
-    // For now, return empty array until the Collection model is ready
-    return [];
+    const whereClause: {
+      distributorId: string;
+      collectionDate?: {
+        gte?: Date;
+        lte?: Date;
+      };
+    } = { distributorId };
+
+    if (startDate || endDate) {
+      whereClause.collectionDate = {};
+      if (startDate) whereClause.collectionDate.gte = startDate;
+      if (endDate) whereClause.collectionDate.lte = endDate;
+    }
+
+    const collections = await prisma.collection.findMany({
+      where: whereClause,
+      orderBy: { collectionDate: "desc" },
+    });
+
+    return collections.map((collection) => ({
+      id: collection.id,
+      collectionNumber: collection.collectionNumber,
+      invoiceId: collection.invoiceId,
+      amountPaid: Number(collection.amountPaid),
+      paymentType: collection.paymentType || PaymentType.CASH,
+      notes: collection.notes || undefined,
+      collectionDate: collection.collectionDate,
+      status: collection.status,
+      createdAt: collection.createdAt,
+      updatedAt: collection.updatedAt,
+    }));
   }
 
-  async getCollectionStats(_distributorId: string): Promise<{
+  async getCollectionStats(distributorId: string): Promise<{
     totalCollected: number;
     pendingAmount: number;
     successRate: number;
     averageCollectionTime: number;
   }> {
-    // For now, return mock stats until the Collection model is ready
+    // Get completed collections
+    const completedCollections = await prisma.collection.aggregate({
+      where: {
+        distributorId,
+        status: "COMPLETED",
+      },
+      _sum: {
+        amountPaid: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Get pending collections
+    const pendingCollections = await prisma.collection.aggregate({
+      where: {
+        distributorId,
+        status: {
+          in: ["PENDING", "PARTIAL"],
+        },
+      },
+      _sum: {
+        amountDue: true,
+        amountPaid: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Get all collections for success rate
+    const totalCollections = await prisma.collection.count({
+      where: { distributorId },
+    });
+
+    // Calculate average collection time
+    const collectionsWithTimes = await prisma.collection.findMany({
+      where: {
+        distributorId,
+        status: "COMPLETED",
+      },
+      include: {
+        invoice: true,
+      },
+    });
+
+    const averageCollectionTime =
+      collectionsWithTimes.length > 0
+        ? collectionsWithTimes.reduce((sum, collection) => {
+            const daysDiff = Math.ceil(
+              (collection.collectionDate.getTime() -
+                collection.invoice.issueDate.getTime()) /
+                (1000 * 3600 * 24),
+            );
+            return sum + daysDiff;
+          }, 0) / collectionsWithTimes.length
+        : 0;
+
+    const totalCollected = Number(completedCollections._sum.amountPaid || 0);
+    const pendingAmountDue = Number(pendingCollections._sum.amountDue || 0);
+    const pendingAmountPaid = Number(pendingCollections._sum.amountPaid || 0);
+    const pendingAmount = pendingAmountDue - pendingAmountPaid;
+    const successRate =
+      totalCollections > 0
+        ? (completedCollections._count.id / totalCollections) * 100
+        : 0;
+
     return {
-      totalCollected: 0,
-      pendingAmount: 0,
-      successRate: 0,
-      averageCollectionTime: 0,
+      totalCollected,
+      pendingAmount,
+      successRate,
+      averageCollectionTime,
     };
   }
 }
